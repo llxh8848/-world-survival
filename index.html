@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a2a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="世界生存">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png">
+    <title>世界生存 - 3D Survival Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 加载界面 -->
+    <div id="loadingScreen">
+        <div class="loading-content">
+            <h1>� 世界生存</h1>
+            <p>3D Survival Game</p>
+            <div class="loading-bar"><div id="loadingFill"></div></div>
+            <p id="loadingText">正在加载资源...</p>
+        </div>
+    </div>
+
+    <!-- 开始界面 -->
+    <div id="startScreen" style="display:none">
+        <div class="start-content">
+            <h1>� 世界生存</h1>
+            <p class="subtitle">在世界中生存下去</p>
+            <div class="controls-hint">
+                <h3>操作说明</h3>
+                <div class="control-grid">
+                    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动</div>
+                    <div><kbd>鼠标</kbd> 视角</div>
+                    <div><kbd>空格</kbd> 跳跃</div>
+                    <div><kbd>Shift</kbd> 冲刺</div>
+                    <div><kbd>左键</kbd> 攻击/采集</div>
+                    <div><kbd>右键</kbd> 使用物品</div>
+                    <div><kbd>E</kbd> 交互/拾取</div>
+                    <div><kbd>I</kbd> 背包</div>
+                    <div><kbd>C</kbd> 合成</div>
+                    <div><kbd>B</kbd> 建造模式</div>
+                    <div><kbd>1</kbd>-<kbd>5</kbd> 快捷栏</div>
+                    <div><kbd>ESC</kbd> 释放鼠标</div>
+                </div>
+            </div>
+            <button id="startBtn" class="btn-start">开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 游戏HUD -->
+    <div id="gameHUD" style="display:none">
+        <!-- 准星 -->
+        <div id="crosshair">+</div>
+
+        <!-- 左下角生存状态 -->
+        <div id="statsPanel">
+            <div class="stat-row">
+                <span class="stat-icon">❤️</span>
+                <div class="stat-bar"><div id="healthBar" class="bar-fill bar-health"></div><span id="healthText">100</span></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🍖</span>
+                <div class="stat-bar"><div id="hungerBar" class="bar-fill bar-hunger"></div><span id="hungerText">100</span></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">💧</span>
+                <div class="stat-bar"><div id="thirstBar" class="bar-fill bar-thirst"></div><span id="thirstText">100</span></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🌡️</span>
+                <div class="stat-bar"><div id="tempBar" class="bar-fill bar-temp"></div><span id="tempText">37°C</span></div>
+            </div>
+        </div>
+
+        <!-- 右上角时间 -->
+        <div id="timePanel">
+            <div id="dayCount">第 1 天</div>
+            <div id="timeDisplay">08:00</div>
+            <div id="dayIcon">☀️</div>
+        </div>
+
+        <!-- 底部快捷栏 -->
+        <div id="hotbar">
+            <div class="hotbar-slot" data-slot="0"><span class="slot-key">1</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+            <div class="hotbar-slot" data-slot="1"><span class="slot-key">2</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+            <div class="hotbar-slot" data-slot="2"><span class="slot-key">3</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+            <div class="hotbar-slot" data-slot="3"><span class="slot-key">4</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+            <div class="hotbar-slot" data-slot="4"><span class="slot-key">5</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+        </div>
+
+        <!-- 交互提示 -->
+        <div id="interactHint" style="display:none">按 <kbd>E</kbd> 交互</div>
+
+        <!-- 死亡界面 -->
+        <div id="deathScreen" style="display:none">
+            <h1>💀 你死了</h1>
+            <p id="deathInfo">你存活了 0 天</p>
+            <p>3秒后自动重生...</p>
+        </div>
+
+        <!-- 消息提示 -->
+        <div id="messageToast"></div>
+
+        <!-- 手机触控 -->
+        <div id="mobileControls">
+            <!-- 左侧摇杆 -->
+            <div id="joystickZone">
+                <div id="joystick">
+                    <div id="joystickKnob"></div>
+                </div>
+            </div>
+            <!-- 右侧按钮 -->
+            <div id="actionButtons">
+                <div id="btnAttack" class="m-btn m-btn-attack">⚔️</div>
+                <div id="btnUse" class="m-btn m-btn-use">✋</div>
+                <div id="btnJump" class="m-btn m-btn-jump">⬆️</div>
+                <div id="btnInteract" class="m-btn m-btn-interact">✊</div>
+            </div>
+            <!-- 顶部菜单按钮 -->
+            <div id="menuButtons">
+                <div id="btnInventory" class="m-menu-btn">📦</div>
+                <div id="btnCrafting" class="m-menu-btn">🔨</div>
+                <div id="btnBuild" class="m-menu-btn">🏗️</div>
+            </div>
+            <!-- 视角触摸区（右侧空白区域） -->
+            <div id="lookZone"></div>
+        </div>
+    </div>
+
+    <!-- 背包界面 -->
+    <div id="inventoryUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>📦 背包</h2>
+            <button class="btn-close" data-close="inventoryUI">✕</button>
+        </div>
+        <div id="inventoryGrid"></div>
+        <div class="panel-footer">
+            <p>点击物品分配到快捷栏 | 拖拽排序</p>
+        </div>
+    </div>
+
+    <!-- 合成界面 -->
+    <div id="craftingUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>🔨 合成</h2>
+            <button class="btn-close" data-close="craftingUI">✕</button>
+        </div>
+        <div class="crafting-categories">
+            <button class="craft-cat active" data-cat="all">全部</button>
+            <button class="craft-cat" data-cat="tool">工具</button>
+            <button class="craft-cat" data-cat="weapon">武器</button>
+            <button class="craft-cat" data-cat="building">建筑</button>
+            <button class="craft-cat" data-cat="consumable">食物</button>
+            <button class="craft-cat" data-cat="material">材料</button>
+        </div>
+        <div id="craftingList"></div>
+    </div>
+
+    <!-- 建造提示 -->
+    <div id="buildHint" style="display:none">
+        <p>建造模式 | <kbd>左键</kbd>放置 <kbd>B</kbd>退出</p>
+        <div id="buildSelector">
+            <button class="build-option active" data-item="wall_wood">木墙</button>
+            <button class="build-option" data-item="wall_stone">石墙</button>
+            <button class="build-option" data-item="campfire">篝火</button>
+            <button class="build-option" data-item="torch">火把</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/survival.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/enemies.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/mobile.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
