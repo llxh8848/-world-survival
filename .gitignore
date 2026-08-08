@@ -14,7 +14,19 @@ Desktop.ini
 *.tmp
 *.log
 GitInstaller.exe
+*.msi
 
 # Python
 __pycache__/
 *.pyc
+
+# Godot
+.godot/
+
+# 截图
+360截图*.jpg
+
+# 构建产物
+android/app/build/
+android/.gradle/
+android/build/

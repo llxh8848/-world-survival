@@ -1,0 +1,234 @@
+// 物品图标绘制系统：使用SVG几何图形，不依赖表情字体
+
+const ITEM_ICON_COLORS = {
+    wood: ['#8b5a2b', '#c58a4a'],
+    stone: ['#777b82', '#b6bbc2'],
+    iron_ore: ['#4d5968', '#d27a48'],
+    iron_ingot: ['#788594', '#c8d2dc'],
+    willow: ['#3f7f45', '#8fbd5b'],
+    berry: ['#52256f', '#bd65d4'],
+    kelp: ['#1e644c', '#63b77d'],
+    meat_raw: ['#8e3036', '#e37c72'],
+    meat_cooked: ['#7b3d20', '#d8843d'],
+    wood_pickaxe: ['#8b5a2b', '#9da8b5'],
+    stone_pickaxe: ['#777b82', '#c0c5cc'],
+    iron_pickaxe: ['#465462', '#d8e2e9'],
+    wood_axe: ['#8b5a2b', '#c58a4a'],
+    stone_axe: ['#777b82', '#b6bbc2'],
+    iron_axe: ['#465462', '#d8e2e9'],
+    wood_sword: ['#8b5a2b', '#e2b36b'],
+    stone_sword: ['#777b82', '#d4d9df'],
+    iron_sword: ['#465462', '#e8f0f5'],
+    torch: ['#7d4a25', '#ff9d28'],
+    wall_wood: ['#744521', '#b87333'],
+    wall_stone: ['#666b73', '#aeb4bb'],
+    campfire: ['#663b25', '#ff8c24'],
+    knowledge_bookshelf: ['#5b351e', '#c18a4b'],
+    auto_miner: ['#3e4e5a', '#9db3be'],
+    wood_helmet: ['#8b5a2b', '#c58a4a'],
+    wood_chestplate: ['#8b5a2b', '#c58a4a'],
+    wood_leggings: ['#8b5a2b', '#c58a4a'],
+    wood_boots: ['#8b5a2b', '#c58a4a'],
+    apple: ['#c82828', '#e85858'],
+    drill: ['#3a4a5a', '#8a9aaa'],
+    steel_dirty: ['#5a5a5a', '#9a9a9a'],
+    steel: ['#4a5a6a', '#c8d4e0'],
+    steel_sword: ['#3a4a5a', '#e0e8f0'],
+    steel_axe: ['#3a4a5a', '#c8d4e0'],
+    steel_pickaxe: ['#3a4a5a', '#c8d4e0'],
+    kelp_crispy: ['#2a6b3a', '#7ac85a'],
+    chest: ['#6b4a2a', '#c89a5a'],
+    forge: ['#3a3a3a', '#ff8c24'],
+    rare_wood: ['#6b3a1a', '#d4a050'],
+    hard_wood_helmet: ['#5a2a10', '#c4863a'],
+    hard_wood_chestplate: ['#5a2a10', '#c4863a'],
+    hard_wood_leggings: ['#5a2a10', '#c4863a'],
+    hard_wood_boots: ['#5a2a10', '#c4863a'],
+    rare_wood_pile: ['#8b5a2b', '#d4a050'],
+    high_wood: ['#2a1a08', '#e8c860'],
+    high_willow: ['#2a5a1a', '#a8e860'],
+    ultimate_sword: ['#1a1a2a', '#e8c860'],
+    ultimate_pickaxe: ['#1a1a2a', '#e8c860'],
+    ultimate_axe: ['#1a1a2a', '#e8c860'],
+    ultimate_bookshelf: ['#3a2a10', '#ffd700'],
+    portal: ['#1a0a2a', '#9933ff'],
+    fiber: ['#3a3a3a', '#d4d4d4'],
+    wooden_healing_talisman: ['#3a5a2a', '#7adb5a'],
+    slotted_stone: ['#5a5e64', '#a8acb2'],
+    petrification_item: ['#6a5a3a', '#c8b888'],
+    wooden_speed_talisman: ['#2a4a1a', '#a8e860'],
+    stone_helmet: ['#4a4e54', '#8a8e94'],
+    stone_chestplate: ['#4a4e54', '#8a8e94'],
+    stone_leggings: ['#4a4e54', '#8a8e94'],
+    stone_boots: ['#4a4e54', '#8a8e94'],
+    rare_stone: ['#3a3e44', '#b8c0c8'],
+    normal_altar: ['#4a4e54', '#a8acb2'],
+    light_stone: ['#4a4a2a', '#ffeb80'],
+    certain_one: ['#2a2a3a', '#c0c0e0'],
+    super_stone: ['#2a2a4a', '#a0a0ff'],
+    heart_of_stone: ['#3a1a1a', '#ff4040'],
+    gold_ore: ['#8a6a00', '#ffd700'],
+    gold: ['#b8860b', '#ffd700'],
+    gold_coin: ['#b8860b', '#ffdd44'],
+    teleport_monument: ['#3a3e44', '#7adb5a'],
+    carnival_sword: ['#8a2a2a', '#ff44ff'],
+    divine_wood: ['#5a4a00', '#ffd700'],
+    mystery_box: ['#3a2a1a', '#ffaa44'],
+};
+
+function itemIconSVG(itemId) {
+    const colors = ITEM_ICON_COLORS[itemId] || ['#59636d', '#c5cdd3'];
+    const a = colors[0];
+    const b = colors[1];
+    let shape = '';
+
+    if (itemId === 'wood_sword') {
+        shape = `<path d="M48 8L57 17 31 43 24 36z" fill="${b}" stroke="#20252b" stroke-width="2"/><path d="M25 39l9 9M20 45l15-15" stroke="${a}" stroke-width="6" stroke-linecap="round"/><path d="M17 53l8-8 6 6-8 8z" fill="${a}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'stone_sword') {
+        shape = `<path d="M48 8L57 17 31 43 24 36z" fill="#9a9a9a" stroke="#20252b" stroke-width="2"/><path d="M25 39l9 9M20 45l15-15" stroke="#7a7a7a" stroke-width="6" stroke-linecap="round"/><path d="M17 53l8-8 6 6-8 8z" fill="#7a7a7a" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'iron_sword') {
+        shape = `<path d="M48 8L57 17 31 43 24 36z" fill="#d4a574" stroke="#20252b" stroke-width="2"/><path d="M25 39l9 9M20 45l15-15" stroke="#c89a5a" stroke-width="6" stroke-linecap="round"/><path d="M17 53l8-8 6 6-8 8z" fill="#c89a5a" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'steel_sword') {
+        shape = `<path d="M48 8L57 17 31 43 24 36z" fill="#5a8aaa" stroke="#20252b" stroke-width="2"/><path d="M25 39l9 9M20 45l15-15" stroke="#3a6a8a" stroke-width="6" stroke-linecap="round"/><path d="M17 53l8-8 6 6-8 8z" fill="#3a6a8a" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId.includes('sword')) {
+        shape = `<path d="M48 8L57 17 31 43 24 36z" fill="${b}" stroke="#20252b" stroke-width="2"/><path d="M25 39l9 9M20 45l15-15" stroke="${a}" stroke-width="6" stroke-linecap="round"/><path d="M17 53l8-8 6 6-8 8z" fill="${a}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'wood_pickaxe') {
+        shape = `<path d="M26 55L39 20" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M20 18Q38 4 56 18" fill="none" stroke="${b}" stroke-width="8" stroke-linecap="round"/>`;
+    } else if (itemId === 'stone_pickaxe') {
+        shape = `<path d="M26 55L39 20" stroke="#7a7a7a" stroke-width="7" stroke-linecap="round"/><path d="M20 18Q38 4 56 18" fill="none" stroke="#9a9a9a" stroke-width="8" stroke-linecap="round"/>`;
+    } else if (itemId === 'iron_pickaxe') {
+        shape = `<path d="M26 55L39 20" stroke="#c89a5a" stroke-width="7" stroke-linecap="round"/><path d="M20 18Q38 4 56 18" fill="none" stroke="#d4a574" stroke-width="8" stroke-linecap="round"/>`;
+    } else if (itemId === 'steel_pickaxe') {
+        shape = `<path d="M26 55L39 20" stroke="#3a6a8a" stroke-width="7" stroke-linecap="round"/><path d="M20 18Q38 4 56 18" fill="none" stroke="#5a8aaa" stroke-width="8" stroke-linecap="round"/>`;
+    } else if (itemId === 'wood_axe') {
+        shape = `<path d="M27 57L38 20" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M38 22Q47 8 59 15L54 34Q43 32 38 22z" fill="${b}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'stone_axe') {
+        shape = `<path d="M27 57L38 20" stroke="#7a7a7a" stroke-width="7" stroke-linecap="round"/><path d="M38 22Q47 8 59 15L54 34Q43 32 38 22z" fill="#9a9a9a" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'iron_axe') {
+        shape = `<path d="M27 57L38 20" stroke="#c89a5a" stroke-width="7" stroke-linecap="round"/><path d="M38 22Q47 8 59 15L54 34Q43 32 38 22z" fill="#d4a574" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'steel_axe') {
+        shape = `<path d="M27 57L38 20" stroke="#3a6a8a" stroke-width="7" stroke-linecap="round"/><path d="M38 22Q47 8 59 15L54 34Q43 32 38 22z" fill="#5a8aaa" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId.includes('axe')) {
+        shape = `<path d="M27 57L38 20" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M38 22Q47 8 59 15L54 34Q43 32 38 22z" fill="${b}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'torch') {
+        shape = `<path d="M31 58L36 27" stroke="${a}" stroke-width="8" stroke-linecap="round"/><path d="M36 29Q23 19 34 7Q47 18 39 29z" fill="${b}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'campfire') {
+        shape = `<path d="M17 49L53 37M18 38l35 12" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M35 42Q20 28 36 10Q52 28 35 42z" fill="${b}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'knowledge_bookshelf') {
+        shape = `<rect x="13" y="10" width="38" height="47" rx="2" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M18 19h28M18 31h28M18 43h28" stroke="#d5a866" stroke-width="3"/><path d="M24 12v10M35 21v10M28 33v10M42 44v10" stroke="${b}" stroke-width="5"/>`;
+    } else if (itemId === 'auto_miner') {
+        shape = `<rect x="15" y="18" width="34" height="30" rx="4" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M23 48v8M41 48v8M32 18V8" stroke="${b}" stroke-width="5"/><circle cx="32" cy="33" r="8" fill="${b}" stroke="#20252b" stroke-width="2"/><path d="M32 28v10M27 33h10" stroke="${a}" stroke-width="2"/>`;
+    } else if (itemId === 'wall_wood' || itemId === 'wall_stone') {
+        shape = `<path d="M10 17h44v34H10z" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M10 28h44M10 40h44M25 17v11M42 28v12M25 40v11" stroke="${b}" stroke-width="3"/>`;
+    } else if (itemId === 'iron_ingot') {
+        shape = `<path d="M14 25l10-12h22l10 12-10 25H24z" fill="${b}" stroke="#20252b" stroke-width="2"/><path d="M14 25h42M24 13l8 12 8-12" fill="none" stroke="${a}" stroke-width="3"/>`;
+    } else if (itemId === 'iron_ore') {
+        shape = `<path d="M12 43l8-25 22-7 13 18-10 25-24 2z" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M25 22l8-4 5 7-8 5zM39 36l7-4 4 6-7 6z" fill="${b}"/>`;
+    } else if (itemId === 'stone') {
+        shape = `<path d="M12 43l8-25 23-5 13 20-12 19-25 1z" fill="${b}" stroke="#20252b" stroke-width="2"/><path d="M25 23l8 7-5 10M42 18l-9 12 12 4" fill="none" stroke="${a}" stroke-width="3"/>`;
+    } else if (itemId === 'wood') {
+        shape = `<path d="M16 17h32v39H16z" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M22 17v39M42 17v39M16 28h32M16 44h32" stroke="${b}" stroke-width="4"/>`;
+    } else if (itemId === 'willow' || itemId === 'kelp') {
+        shape = `<path d="M32 56Q20 36 32 8M32 43Q45 32 49 17M28 34Q17 28 15 18" fill="none" stroke="${a}" stroke-width="4" stroke-linecap="round"/><path d="M28 26l-9-7M37 34l11-9M29 16l7-8" stroke="${b}" stroke-width="5" stroke-linecap="round"/>`;
+    } else if (itemId === 'berry') {
+        shape = `<path d="M32 19q8-8 15-4" fill="none" stroke="#477542" stroke-width="4"/><circle cx="25" cy="34" r="10" fill="${a}" stroke="#20252b" stroke-width="2"/><circle cx="40" cy="34" r="10" fill="${b}" stroke="#20252b" stroke-width="2"/><circle cx="33" cy="45" r="10" fill="${a}" stroke="#20252b" stroke-width="2"/>`;
+    } else if (itemId === 'meat_raw' || itemId === 'meat_cooked') {
+        shape = `<path d="M17 42Q14 22 31 18Q49 14 51 31Q52 47 36 52Q21 56 17 42z" fill="${b}" stroke="#20252b" stroke-width="2"/><circle cx="31" cy="30" r="4" fill="${a}"/><circle cx="41" cy="39" r="3" fill="${a}"/>`;
+    } else if (itemId === 'wood_helmet') {
+        shape = `<defs><linearGradient id="helmGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 18C20 14 24 10 32 10C40 10 44 14 44 18L44 26C44 28 42 30 40 30L24 30C22 30 20 28 20 26Z" fill="url(#helmGrad)" stroke="#20252b" stroke-width="2"/><path d="M22 20L42 20M22 24L42 24" stroke="#20252b" stroke-width="1" opacity="0.5"/><path d="M28 30L28 34M36 30L36 34" stroke="#20252b" stroke-width="1.5"/>`;
+    } else if (itemId === 'wood_chestplate') {
+        shape = `<defs><linearGradient id="chestGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M18 16L26 12L38 12L46 16L48 24L46 50L18 50L16 24Z" fill="url(#chestGrad)" stroke="#20252b" stroke-width="2"/><path d="M32 12V50M24 20L40 20M24 28L40 28M24 36L40 36M24 44L40 44" stroke="#20252b" stroke-width="1" opacity="0.5"/><circle cx="28" cy="32" r="2" fill="#20252b"/><circle cx="36" cy="32" r="2" fill="#20252b"/>`;
+    } else if (itemId === 'wood_leggings') {
+        shape = `<defs><linearGradient id="legsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 12L44 12L42 50L34 50L32 28L30 50L22 50Z" fill="url(#legsGrad)" stroke="#20252b" stroke-width="2"/><path d="M26 12L26 50M38 12L38 50M22 20L42 20M22 30L42 30M22 40L42 40" stroke="#20252b" stroke-width="1" opacity="0.5"/>`;
+    } else if (itemId === 'wood_boots') {
+        shape = `<defs><linearGradient id="bootsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M22 28L22 48L30 50L34 50L42 48L42 28C42 26 40 24 38 24L26 24C24 24 22 26 22 28Z" fill="url(#bootsGrad)" stroke="#20252b" stroke-width="2"/><path d="M26 28L26 48M38 28L38 48M22 36L42 36M22 44L42 44" stroke="#20252b" stroke-width="1" opacity="0.5"/><path d="M30 48L30 52M34 48L34 52" stroke="#20252b" stroke-width="1.5"/>`;
+    } else if (itemId === 'apple') {
+        shape = `<path d="M32 18Q28 10 34 6" fill="none" stroke="#5a7a3a" stroke-width="3" stroke-linecap="round"/><path d="M34 12Q40 8 44 12" fill="none" stroke="#5a7a3a" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="38" r="18" fill="${a}" stroke="#20252b" stroke-width="2"/><ellipse cx="27" cy="32" rx="5" ry="4" fill="${b}" opacity="0.6"/>`;
+    } else if (itemId === 'drill') {
+        shape = `<defs><linearGradient id="drillGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 20L44 20L48 28L44 36L20 36L16 28Z" fill="url(#drillGrad)" stroke="#20252b" stroke-width="2"/><path d="M24 20L24 36M40 20L40 36M16 28L48 28" stroke="#20252b" stroke-width="1" opacity="0.5"/><path d="M28 36L28 48M36 36L36 48" stroke="${a}" stroke-width="4" stroke-linecap="round"/><path d="M26 48L30 52M34 48L38 52" stroke="${b}" stroke-width="3" stroke-linecap="round"/>`;
+    } else if (itemId === 'steel_dirty') {
+        shape = `<path d="M14 25l10-12h22l10 12-10 25H24z" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M14 25h42M24 13l8 12 8-12" fill="none" stroke="${b}" stroke-width="2"/><path d="M22 40l5-3 4 4 6-5 5 3" fill="none" stroke="${b}" stroke-width="2" opacity="0.6"/>`;
+    } else if (itemId === 'steel') {
+        shape = `<defs><linearGradient id="steelGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M14 25l10-12h22l10 12-10 25H24z" fill="url(#steelGrad)" stroke="#20252b" stroke-width="2"/><path d="M14 25h42M24 13l8 12 8-12" fill="none" stroke="${a}" stroke-width="3"/><path d="M22 20h20M22 30h20M22 40h20" stroke="#fff" stroke-width="1" opacity="0.3"/>`;
+    } else if (itemId === 'kelp_crispy') {
+        shape = `<path d="M32 56Q20 36 32 8M32 43Q45 32 49 17M28 34Q17 28 15 18" fill="none" stroke="${a}" stroke-width="5" stroke-linecap="round"/><path d="M28 26l-9-7M37 34l11-9M29 16l7-8" stroke="${b}" stroke-width="6" stroke-linecap="round"/><path d="M22 40l6-3M42 22l5 3M35 48l-4-5" stroke="${b}" stroke-width="3" stroke-linecap="round" opacity="0.7"/>`;
+    } else if (itemId === 'chest') {
+        shape = `<defs><linearGradient id="chestGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M12 22L32 10L52 22L52 52L12 52Z" fill="url(#chestGrad)" stroke="#20252b" stroke-width="2"/><path d="M12 22L52 22" stroke="#20252b" stroke-width="2"/><rect x="26" y="30" width="12" height="10" rx="1" fill="${a}" stroke="#20252b" stroke-width="2"/><circle cx="32" cy="35" r="2" fill="#20252b"/><path d="M12 22L32 10L52 22" fill="none" stroke="${a}" stroke-width="3" opacity="0.5"/>`;
+    } else if (itemId === 'forge') {
+        shape = `<defs><linearGradient id="forgeBase" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#666;stop-opacity:1" /><stop offset="100%" style="stop-color:#333;stop-opacity:1" /></linearGradient><linearGradient id="forgeAnvil" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#555;stop-opacity:1" /><stop offset="100%" style="stop-color:#222;stop-opacity:1" /></linearGradient></defs><path d="M10 48L54 48L52 58L12 58Z" fill="url(#forgeBase)" stroke="#20252b" stroke-width="2"/><path d="M20 48L20 40L44 40L44 48Z" fill="url(#forgeBase)" stroke="#20252b" stroke-width="2"/><path d="M16 40L48 40L46 34L18 34Z" fill="url(#forgeAnvil)" stroke="#20252b" stroke-width="2"/><path d="M22 34L22 28L42 28L42 34Z" fill="url(#forgeAnvil)" stroke="#20252b" stroke-width="2"/><path d="M38 30L48 24L46 28L40 32Z" fill="url(#forgeAnvil)" stroke="#20252b" stroke-width="1.5"/><path d="M24 28Q22 18 28 12Q34 8 36 14Q38 22 32 28Z" fill="${b}" stroke="#20252b" stroke-width="1.5" opacity="0.85"/><path d="M26 24Q24 18 28 14Q32 12 33 16" fill="none" stroke="#ffdd44" stroke-width="2" opacity="0.7"/>`;
+    } else if (itemId === 'rare_wood') {
+        shape = `<defs><linearGradient id="rareWoodGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M14 14L50 14L50 50L14 50Z" fill="url(#rareWoodGrad)" stroke="#20252b" stroke-width="2"/><path d="M14 14L50 50M50 14L14 50" stroke="${a}" stroke-width="1" opacity="0.4"/><path d="M20 14L20 50M32 14L32 50M44 14L44 50" stroke="#d4a050" stroke-width="1.5" opacity="0.6"/><circle cx="32" cy="32" r="6" fill="none" stroke="${b}" stroke-width="2" opacity="0.7"/><path d="M28 32L36 32M32 28L32 36" stroke="${b}" stroke-width="1.5" opacity="0.6"/><path d="M14 14L18 10L54 10L50 14Z" fill="${b}" stroke="#20252b" stroke-width="2" opacity="0.8"/>`;
+    } else if (itemId === 'hard_wood_helmet') {
+        shape = `<defs><linearGradient id="hardHelmGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M18 18C18 14 22 8 32 8C42 8 46 14 46 18L46 28C46 30 44 32 42 32L22 32C20 32 18 30 18 28Z" fill="url(#hardHelmGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M20 18L44 18M20 23L44 23M20 28L44 28" stroke="#d4a050" stroke-width="1.5" opacity="0.7"/><path d="M26 32L26 38M38 32L38 38" stroke="#20252b" stroke-width="2"/><path d="M24 12L28 8M40 12L36 8" stroke="${b}" stroke-width="2" stroke-linecap="round"/><circle cx="32" cy="20" r="3" fill="${b}" stroke="#20252b" stroke-width="1.5"/>`;
+    } else if (itemId === 'hard_wood_chestplate') {
+        shape = `<defs><linearGradient id="hardChestGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M16 14L26 10L38 10L48 14L50 24L48 52L16 52L14 24Z" fill="url(#hardChestGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 10V52" stroke="#20252b" stroke-width="2"/><path d="M20 18L44 18M20 26L44 26M20 34L44 34M20 42L44 42M20 50L44 50" stroke="#d4a050" stroke-width="1.5" opacity="0.6"/><rect x="27" y="28" width="10" height="8" rx="1" fill="${b}" stroke="#20252b" stroke-width="1.5" opacity="0.8"/><path d="M22 14L18 10M42 14L46 10" stroke="${b}" stroke-width="2" stroke-linecap="round"/>`;
+    } else if (itemId === 'hard_wood_leggings') {
+        shape = `<defs><linearGradient id="hardLegsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M18 10L46 10L44 52L36 52L33 28L31 52L22 52Z" fill="url(#hardLegsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M24 10L24 52M40 10L40 52M20 18L44 18M20 28L44 28M20 38L44 38M20 48L44 48" stroke="#d4a050" stroke-width="1.5" opacity="0.6"/><path d="M28 10L28 28M36 10L36 28" stroke="#20252b" stroke-width="1" opacity="0.5"/><rect x="26" y="14" width="12" height="6" rx="1" fill="${b}" stroke="#20252b" stroke-width="1" opacity="0.7"/>`;
+    } else if (itemId === 'hard_wood_boots') {
+        shape = `<defs><linearGradient id="hardBootsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 26L20 48L30 52L36 52L44 48L44 26C44 24 42 22 40 22L24 22C22 22 20 24 20 26Z" fill="url(#hardBootsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M24 26L24 48M40 26L40 48M20 34L44 34M20 44L44 44" stroke="#d4a050" stroke-width="1.5" opacity="0.6"/><path d="M30 48L30 56M36 48L36 56" stroke="#20252b" stroke-width="2"/><path d="M26 22L26 14L38 14L38 22" stroke="${b}" stroke-width="2.5" fill="none"/><circle cx="32" cy="14" r="3" fill="${b}" stroke="#20252b" stroke-width="1.5"/>`;
+    } else if (itemId === 'rare_wood_pile') {
+        shape = `<defs><linearGradient id="rwpGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><ellipse cx="32" cy="52" rx="22" ry="6" fill="${a}" opacity="0.5"/><path d="M12 44L52 44L48 52L16 52Z" fill="url(#rwpGrad)" stroke="#20252b" stroke-width="2"/><path d="M14 34L50 34L46 44L18 44Z" fill="url(#rwpGrad)" stroke="#20252b" stroke-width="2"/><path d="M18 24L46 24L42 34L22 34Z" fill="url(#rwpGrad)" stroke="#20252b" stroke-width="2"/><path d="M12 44L52 44M14 34L50 34" stroke="#d4a050" stroke-width="1.5" opacity="0.6"/><circle cx="32" cy="18" r="5" fill="none" stroke="${b}" stroke-width="2" opacity="0.7"/><path d="M28 18L36 18M32 14L32 22" stroke="${b}" stroke-width="1.5" opacity="0.5"/>`;
+    } else if (itemId === 'high_wood') {
+        shape = `<defs><linearGradient id="hwGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M12 12L52 12L52 52L12 52Z" fill="url(#hwGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M12 12L52 52M52 12L12 52" stroke="${a}" stroke-width="1" opacity="0.3"/><path d="M18 12L18 52M32 12L32 52M46 12L46 52" stroke="#e8c860" stroke-width="2" opacity="0.7"/><path d="M12 20L52 20M12 32L52 32M12 44L52 44" stroke="#e8c860" stroke-width="1" opacity="0.4"/><path d="M24 8L28 12M40 8L36 12" stroke="${b}" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="32" r="7" fill="none" stroke="${b}" stroke-width="2.5" opacity="0.8"/><path d="M28 32L36 32M32 28L32 36" stroke="${b}" stroke-width="2" opacity="0.6"/>`;
+    } else if (itemId === 'high_willow') {
+        shape = `<defs><linearGradient id="hwiGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M32 56Q18 36 32 6M32 42Q47 30 52 14M28 32Q14 26 12 14" fill="none" stroke="${a}" stroke-width="5" stroke-linecap="round"/><path d="M26 24l-10-8M38 32l12-10M28 14l8-10" stroke="${b}" stroke-width="6" stroke-linecap="round"/><path d="M22 38l8-4M44 20l6 4M36 48l-5-6" stroke="${b}" stroke-width="4" stroke-linecap="round" opacity="0.8"/><circle cx="32" cy="20" r="4" fill="${b}" opacity="0.6"/><circle cx="44" cy="28" r="3" fill="${b}" opacity="0.5"/>`;
+    } else if (itemId === 'ultimate_sword') {
+        shape = `<defs><linearGradient id="uswGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M48 6L58 16 30 44 22 36z" fill="url(#uswGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M22 40l10 10M16 46l18-18" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M12 54l10-10 8 8-10 10z" fill="${a}" stroke="#20252b" stroke-width="2.5"/><path d="M48 6L58 16M50 8L56 14" stroke="#ffd700" stroke-width="1.5" opacity="0.7"/><circle cx="26" cy="38" r="3" fill="${b}" stroke="#20252b" stroke-width="1.5"/><path d="M22 36L30 44" stroke="#ffd700" stroke-width="1" opacity="0.5"/>`;
+    } else if (itemId === 'ultimate_pickaxe') {
+        shape = `<defs><linearGradient id="upkGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><g><rect x="30" y="18" width="4" height="38" fill="${a}" stroke="#20252b" stroke-width="1.5" rx="1"/><path d="M10 18L32 8L54 18L50 28L32 24L14 28Z" fill="url(#upkGrad)" stroke="#20252b" stroke-width="2.5" stroke-linejoin="round"/><path d="M10 18L14 28M54 18L50 28" stroke="#ffd700" stroke-width="2" opacity="0.8" stroke-linecap="round"/><path d="M28 56L36 56L35 60L29 60Z" fill="${a}" stroke="#20252b" stroke-width="1.5"/><circle cx="32" cy="18" r="2.5" fill="#ffd700" opacity="0.9"/><path d="M32 8L32 18" stroke="#ffd700" stroke-width="1" opacity="0.6"/></g>`;
+    } else if (itemId === 'ultimate_axe') {
+        shape = `<defs><linearGradient id="uaxGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M14 12Q32 6 50 16L46 26Q32 18 18 24Z" fill="url(#uaxGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M30 20L34 56" stroke="${a}" stroke-width="5" stroke-linecap="round"/><path d="M26 56L38 56" stroke="${a}" stroke-width="5" stroke-linecap="round"/><path d="M18 24Q32 18 46 26" stroke="#ffd700" stroke-width="1" opacity="0.5"/><circle cx="32" cy="18" r="3" fill="${b}" stroke="#20252b" stroke-width="1.5"/><path d="M14 12Q32 6 50 16" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/>`;
+    } else if (itemId === 'ultimate_bookshelf') {
+        shape = `<defs><linearGradient id="ubsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M10 8L54 8L54 56L10 56Z" fill="url(#ubsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M10 8L54 8M10 56L54 56" stroke="#ffd700" stroke-width="2" opacity="0.8"/><path d="M12 20L52 20M12 32L52 32M12 44L52 44" stroke="#ffd700" stroke-width="1.5" opacity="0.6"/><rect x="14" y="10" width="8" height="8" fill="#ff4444" opacity="0.8"/><rect x="24" y="10" width="8" height="8" fill="#44ff44" opacity="0.8"/><rect x="34" y="10" width="8" height="8" fill="#4444ff" opacity="0.8"/><rect x="44" y="10" width="6" height="8" fill="#ffff44" opacity="0.8"/><rect x="14" y="22" width="8" height="8" fill="#ff44ff" opacity="0.8"/><rect x="24" y="22" width="8" height="8" fill="#44ffff" opacity="0.8"/><rect x="34" y="22" width="8" height="8" fill="#ff8844" opacity="0.8"/><rect x="44" y="22" width="6" height="8" fill="#8844ff" opacity="0.8"/><rect x="14" y="34" width="8" height="8" fill="#44ff44" opacity="0.8"/><rect x="24" y="34" width="8" height="8" fill="#ff4444" opacity="0.8"/><rect x="34" y="34" width="8" height="8" fill="#4444ff" opacity="0.8"/><rect x="44" y="34" width="6" height="8" fill="#ffff44" opacity="0.8"/><path d="M28 46L32 50L36 46L32 42Z" fill="${b}" stroke="#20252b" stroke-width="1.5"/>`;
+    } else if (itemId === 'wooden_healing_talisman') {
+        shape = `<defs><linearGradient id="whtGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M32 6L54 18L54 42L32 54L10 42L10 18Z" fill="url(#whtGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 6L54 18M32 6L10 18M54 18L54 42M10 18L10 42M54 42L32 54M10 42L32 54" stroke="#20252b" stroke-width="1" opacity="0.3"/><circle cx="32" cy="30" r="10" fill="none" stroke="#fff" stroke-width="2" opacity="0.5"/><path d="M32 22v16M24 30h16" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/><circle cx="32" cy="30" r="4" fill="#7adb5a" opacity="0.6"/>`;
+    } else if (itemId === 'fiber') {
+        shape = `<path d="M20 12Q32 20 20 28Q32 36 20 44Q32 52 20 56" fill="none" stroke="${a}" stroke-width="4" stroke-linecap="round"/><path d="M44 12Q32 20 44 28Q32 36 44 44Q32 52 44 56" fill="none" stroke="${a}" stroke-width="4" stroke-linecap="round"/><path d="M20 12Q32 20 20 28Q32 36 20 44Q32 52 20 56" stroke="${b}" stroke-width="1.5" opacity="0.6"/><path d="M44 12Q32 20 44 28Q32 36 44 44Q32 52 44 56" stroke="${b}" stroke-width="1.5" opacity="0.6"/>`;
+    } else if (itemId === 'portal') {
+        shape = `<defs><radialGradient id="ptlGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:${b};stop-opacity:0.9" /><stop offset="70%" style="stop-color:${a};stop-opacity:0.8" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><ellipse cx="32" cy="32" rx="20" ry="24" fill="url(#ptlGrad)" stroke="#20252b" stroke-width="2.5"/><ellipse cx="32" cy="32" rx="14" ry="18" fill="none" stroke="${b}" stroke-width="1.5" opacity="0.6"/><ellipse cx="32" cy="32" rx="8" ry="12" fill="none" stroke="${b}" stroke-width="1" opacity="0.4"/><path d="M32 14Q22 32 32 50Q42 32 32 14Z" fill="${b}" opacity="0.3"/><circle cx="32" cy="32" r="3" fill="${b}" opacity="0.8"/>`;
+    } else if (itemId === 'slotted_stone') {
+        shape = `<defs><linearGradient id="ssGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M10 42l8-26 24-6 12 22-10 22-26 4z" fill="url(#ssGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M22 22l10 8-6 12M42 16l-8 10 10 6" fill="none" stroke="${a}" stroke-width="2.5"/><rect x="26" y="36" width="12" height="8" rx="1" fill="#3a3e44" stroke="#20252b" stroke-width="2"/><path d="M28 38h8M28 42h8" stroke="${b}" stroke-width="1" opacity="0.5"/><circle cx="32" cy="40" r="1.5" fill="${b}" opacity="0.7"/>`;
+    } else if (itemId === 'petrification_item') {
+        shape = `<defs><linearGradient id="piGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 12L44 12L50 24L44 52L20 52L14 24Z" fill="url(#piGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M20 12L44 12L50 24L44 52L20 52L14 24Z" fill="none" stroke="${a}" stroke-width="1" opacity="0.4"/><path d="M20 12L14 24L20 52M44 12L50 24L44 52" stroke="${a}" stroke-width="2" opacity="0.6"/><circle cx="32" cy="28" r="6" fill="none" stroke="${a}" stroke-width="2.5"/><path d="M28 28L36 28M32 24L32 32" stroke="${a}" stroke-width="2"/><path d="M24 40L40 40M26 46L38 46" stroke="${a}" stroke-width="2" opacity="0.5"/><circle cx="32" cy="28" r="2" fill="${b}" opacity="0.8"/>`;
+    } else if (itemId === 'wooden_speed_talisman') {
+        shape = `<defs><linearGradient id="wstGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M32 6L54 18L54 42L32 54L10 42L10 18Z" fill="url(#wstGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 6L54 18M32 6L10 18M54 18L54 42M10 18L10 42M54 42L32 54M10 42L32 54" stroke="#20252b" stroke-width="1" opacity="0.3"/><path d="M32 14L40 22L36 26L44 30L40 34L46 38" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/><path d="M32 14L24 22L28 26L20 30L24 34L18 38" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/><path d="M22 44L42 44" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.5"/><circle cx="32" cy="22" r="3" fill="#a8e860" opacity="0.9"/>`;
+    } else if (itemId === 'stone_helmet') {
+        shape = `<defs><linearGradient id="stHelmGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M18 18C18 14 22 8 32 8C42 8 46 14 46 18L46 28C46 30 44 32 42 32L22 32C20 32 18 30 18 28Z" fill="url(#stHelmGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M20 18L44 18M20 23L44 23M20 28L44 28" stroke="${a}" stroke-width="1.5" opacity="0.6"/><path d="M26 32L26 38M38 32L38 38" stroke="#20252b" stroke-width="2"/><path d="M24 12L28 8M40 12L36 8" stroke="${b}" stroke-width="2" stroke-linecap="round"/><circle cx="32" cy="20" r="3" fill="${a}" stroke="#20252b" stroke-width="1.5"/><path d="M30 20L34 20M32 18L32 22" stroke="${b}" stroke-width="1" opacity="0.7"/>`;
+    } else if (itemId === 'stone_chestplate') {
+        shape = `<defs><linearGradient id="stChestGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M16 14L26 10L38 10L48 14L50 24L48 52L16 52L14 24Z" fill="url(#stChestGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 10V52" stroke="#20252b" stroke-width="2"/><path d="M20 18L44 18M20 26L44 26M20 34L44 34M20 42L44 42M20 50L44 50" stroke="${a}" stroke-width="1.5" opacity="0.5"/><rect x="27" y="28" width="10" height="8" rx="1" fill="${a}" stroke="#20252b" stroke-width="1.5"/><path d="M29 30L35 30M29 34L35 34" stroke="${b}" stroke-width="1" opacity="0.6"/><path d="M22 14L18 10M42 14L46 10" stroke="${b}" stroke-width="2" stroke-linecap="round"/>`;
+    } else if (itemId === 'stone_leggings') {
+        shape = `<defs><linearGradient id="stLegsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M18 10L46 10L44 52L36 52L33 28L31 52L22 52Z" fill="url(#stLegsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M24 10L24 52M40 10L40 52M20 18L44 18M20 28L44 28M20 38L44 38M20 48L44 48" stroke="${a}" stroke-width="1.5" opacity="0.5"/><rect x="26" y="14" width="12" height="6" rx="1" fill="${a}" stroke="#20252b" stroke-width="1" opacity="0.7"/><path d="M28 16L36 16" stroke="${b}" stroke-width="1" opacity="0.5"/>`;
+    } else if (itemId === 'stone_boots') {
+        shape = `<defs><linearGradient id="stBootsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M20 26L20 48L30 52L36 52L44 48L44 26C44 24 42 22 40 22L24 22C22 22 20 24 20 26Z" fill="url(#stBootsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M24 26L24 48M40 26L40 48M20 34L44 34M20 44L44 44" stroke="${a}" stroke-width="1.5" opacity="0.5"/><path d="M30 48L30 56M36 48L36 56" stroke="#20252b" stroke-width="2"/><path d="M26 22L26 14L38 14L38 22" stroke="${b}" stroke-width="2.5" fill="none"/><circle cx="32" cy="14" r="3" fill="${a}" stroke="#20252b" stroke-width="1.5"/><path d="M30 14L34 14M32 12L32 16" stroke="${b}" stroke-width="1" opacity="0.6"/>`;
+    } else if (itemId === 'rare_stone') {
+        shape = `<defs><linearGradient id="rsGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M16 24L28 12L40 16L48 28L44 48L24 52L12 38Z" fill="url(#rsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M28 12L28 32L44 48M28 32L12 38M28 32L48 28" stroke="${a}" stroke-width="2" opacity="0.5"/><path d="M22 28L26 24M36 22L40 26M30 38L34 42" stroke="${b}" stroke-width="2" opacity="0.8"/><circle cx="28" cy="32" r="3" fill="${b}" opacity="0.7"/><circle cx="38" cy="36" r="2" fill="${b}" opacity="0.5"/>`;
+    } else if (itemId === 'normal_altar') {
+        shape = `<defs><linearGradient id="naGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><rect x="12" y="44" width="40" height="8" rx="1" fill="url(#naGrad)" stroke="#20252b" stroke-width="2"/><rect x="16" y="20" width="6" height="24" fill="url(#naGrad)" stroke="#20252b" stroke-width="2"/><rect x="42" y="20" width="6" height="24" fill="url(#naGrad)" stroke="#20252b" stroke-width="2"/><rect x="10" y="16" width="44" height="6" rx="1" fill="url(#naGrad)" stroke="#20252b" stroke-width="2"/><path d="M32 8L38 16L32 24L26 16Z" fill="${b}" stroke="#20252b" stroke-width="2"/><circle cx="32" cy="16" r="3" fill="${a}" opacity="0.8"/><path d="M32 24L32 44M20 30L44 30" stroke="${a}" stroke-width="1.5" opacity="0.4"/>`;
+    } else if (itemId === 'light_stone') {
+        shape = `<defs><radialGradient id="lsGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><path d="M20 16L32 8L44 16L48 28L44 48L32 56L20 48L16 28Z" fill="url(#lsGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 8L32 56M20 16L44 48M44 16L20 48" stroke="${a}" stroke-width="1.5" opacity="0.4"/><circle cx="32" cy="28" r="6" fill="${b}" opacity="0.9"/><circle cx="32" cy="28" r="3" fill="#fff" opacity="0.7"/><path d="M32 18L34 24L32 22L30 24Z" fill="#fff" opacity="0.5"/><path d="M24 38L26 36M40 38L38 36M28 44L30 42M36 44L34 42" stroke="${b}" stroke-width="1.5" opacity="0.6"/>`;
+    } else if (itemId === 'certain_one') {
+        shape = `<defs><linearGradient id="coGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M44 6L52 14 30 36 24 30z" fill="url(#coGrad)" stroke="#20252b" stroke-width="2"/><path d="M25 33l8 8M20 39l14-14" stroke="${a}" stroke-width="6" stroke-linecap="round"/><path d="M16 48l8-8 6 6-8 8z" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M30 36L36 42L30 48L24 42Z" fill="${b}" stroke="#20252b" stroke-width="1.5" opacity="0.8"/><circle cx="33" cy="42" r="2.5" fill="${a}" opacity="0.9"/><path d="M40 12L46 18" stroke="${b}" stroke-width="2" opacity="0.7"/><path d="M38 16L42 20" stroke="${b}" stroke-width="1.5" opacity="0.5"/>`;
+    } else if (itemId === 'super_stone') {
+        shape = `<defs><radialGradient id="ssGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><path d="M16 24L28 12L40 16L48 28L44 48L24 52L12 38Z" fill="url(#ssGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M28 12L28 32L44 48M28 32L12 38M28 32L48 28" stroke="${a}" stroke-width="2" opacity="0.5"/><path d="M22 28L26 24M36 22L40 26M30 38L34 42" stroke="${b}" stroke-width="2.5" opacity="0.9"/><circle cx="28" cy="32" r="4" fill="${b}" opacity="0.8"/><circle cx="28" cy="32" r="2" fill="#fff" opacity="0.5"/><circle cx="38" cy="36" r="2.5" fill="${b}" opacity="0.6"/><path d="M32 18L36 22M20 34L24 38" stroke="${b}" stroke-width="1.5" opacity="0.7"/>`;
+    } else if (itemId === 'heart_of_stone') {
+        shape = `<defs><radialGradient id="hosGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><path d="M32 56C32 56 8 40 8 24C8 16 14 10 22 10C26 10 30 12 32 16C34 12 38 10 42 10C50 10 56 16 56 24C56 40 32 56 32 56Z" fill="url(#hosGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 16L32 56M20 18L32 28L44 18" stroke="${a}" stroke-width="1.5" opacity="0.4"/><path d="M24 24L28 20M40 24L36 20" stroke="${b}" stroke-width="2" opacity="0.8"/><circle cx="32" cy="32" r="4" fill="${b}" opacity="0.7"/><circle cx="32" cy="32" r="2" fill="#fff" opacity="0.5"/>`;
+    } else if (itemId === 'gold_ore') {
+        shape = `<defs><linearGradient id="goGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M12 43l8-25 22-7 13 18-10 25-24 2z" fill="url(#goGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M25 22l8-4 5 7-8 5zM39 36l7-4 4 6-7 6z" fill="${b}" opacity="0.9"/><path d="M20 30l6-3M42 20l5 4M30 42l5 4" stroke="${b}" stroke-width="2" opacity="0.7"/><circle cx="32" cy="32" r="3" fill="#fff" opacity="0.6"/><path d="M32 10L34 16L32 14L30 16Z" fill="${b}" opacity="0.8"/><path d="M14 40L18 36M48 28L52 24" stroke="${b}" stroke-width="1.5" opacity="0.5"/>`;
+    } else if (itemId === 'teleport_monument') {
+        shape = `<defs><linearGradient id="tmGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><rect x="20" y="44" width="24" height="8" rx="1" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M24 44L24 16L40 16L40 44Z" fill="url(#tmGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M24 44L40 44M26 16L26 44M38 16L38 44M24 24L40 24M24 34L40 34" stroke="${a}" stroke-width="1" opacity="0.4"/><circle cx="32" cy="28" r="5" fill="none" stroke="${b}" stroke-width="2" opacity="0.8"/><circle cx="32" cy="28" r="2.5" fill="${b}" opacity="0.7"/><path d="M32 10L34 16L32 14L30 16Z" fill="${b}" opacity="0.9"/><path d="M28 22L30 18M36 22L34 18M28 34L30 38M36 34L34 38" stroke="${b}" stroke-width="1.5" opacity="0.6"/>`;
+    } else if (itemId === 'carnival_sword') {
+        shape = `<defs><linearGradient id="csGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="50%" style="stop-color:#ff88ff;stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><path d="M48 6L56 14 28 42 22 36z" fill="url(#csGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M48 6L56 14M48 6L22 36M56 14L28 42" stroke="#fff" stroke-width="1" opacity="0.6"/><path d="M24 38l8 8M18 44l14-14" stroke="${a}" stroke-width="7" stroke-linecap="round"/><path d="M15 52l8-8 6 6-8 8z" fill="${a}" stroke="#20252b" stroke-width="2"/><circle cx="32" cy="14" r="3" fill="${b}" opacity="0.9"/><circle cx="32" cy="14" r="1.5" fill="#fff" opacity="0.7"/><path d="M26 10L28 8M38 10L36 8M24 18L26 16M40 18L38 16" stroke="${b}" stroke-width="1.5" opacity="0.7"/><path d="M32 4L34 10L32 8L30 10Z" fill="${b}" opacity="0.8"/>`;
+    } else if (itemId === 'divine_wood') {
+        shape = `<defs><linearGradient id="dwGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><rect x="14" y="16" width="36" height="32" rx="3" fill="url(#dwGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M14 24L50 24M14 32L50 32M14 40L50 40M22 16L22 48M32 16L32 48M42 16L42 48" stroke="${a}" stroke-width="1" opacity="0.4"/><circle cx="24" cy="28" r="2.5" fill="#fff" opacity="0.6"/><circle cx="38" cy="36" r="2" fill="#fff" opacity="0.5"/><path d="M32 8L36 16L32 14L28 16Z" fill="${b}" opacity="0.9"/><path d="M18 50L22 46M46 50L42 46" stroke="${b}" stroke-width="2" opacity="0.7"/>`;
+    } else if (itemId === 'gold') {
+        shape = `<defs><radialGradient id="goldGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><path d="M20 16L32 8L44 16L48 28L44 48L32 56L20 48L16 28Z" fill="url(#goldGrad)" stroke="#20252b" stroke-width="2.5"/><path d="M32 8L32 56M20 16L44 48M44 16L20 48" stroke="${a}" stroke-width="1.5" opacity="0.4"/><circle cx="32" cy="28" r="6" fill="${b}" opacity="0.9"/><circle cx="32" cy="28" r="3" fill="#fff" opacity="0.7"/><path d="M32 18L34 24L32 22L30 24Z" fill="#fff" opacity="0.5"/><path d="M24 38L26 36M40 38L38 36M28 44L30 42M36 44L34 42" stroke="${b}" stroke-width="1.5" opacity="0.6"/>`;
+    } else if (itemId === 'gold_coin') {
+        shape = `<defs><radialGradient id="gcGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></radialGradient></defs><circle cx="32" cy="32" r="20" fill="url(#gcGrad)" stroke="#20252b" stroke-width="2.5"/><circle cx="32" cy="32" r="14" fill="none" stroke="${a}" stroke-width="1.5" opacity="0.5"/><path d="M32 18L36 28L32 26L28 28Z" fill="#fff" opacity="0.6"/><text x="32" y="38" text-anchor="middle" font-size="16" font-weight="bold" fill="${a}" opacity="0.8">金</text><path d="M22 32L26 28M42 32L38 28M22 32L26 36M42 32L38 36" stroke="${b}" stroke-width="1.5" opacity="0.5"/>`;
+    } else if (itemId === 'mystery_box') {
+        shape = `<defs><linearGradient id="mbGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:${b};stop-opacity:1" /><stop offset="100%" style="stop-color:${a};stop-opacity:1" /></linearGradient></defs><rect x="12" y="20" width="40" height="32" rx="2" fill="url(#mbGrad)" stroke="#20252b" stroke-width="2.5"/><rect x="10" y="16" width="44" height="8" rx="1" fill="${a}" stroke="#20252b" stroke-width="2"/><circle cx="32" cy="20" r="3" fill="${b}" stroke="#20252b" stroke-width="1.5"/><path d="M32 14L32 8M28 10L32 6L36 10" stroke="${b}" stroke-width="2" fill="none"/><path d="M20 28L20 44M44 28L44 44M12 36L52 36" stroke="${a}" stroke-width="1.5" opacity="0.5"/><circle cx="32" cy="36" r="5" fill="none" stroke="${b}" stroke-width="2" opacity="0.8"/><circle cx="32" cy="36" r="2" fill="${b}" opacity="0.7"/>`;
+    } else {
+        shape = `<rect x="14" y="14" width="36" height="36" rx="7" fill="${a}" stroke="#20252b" stroke-width="2"/><path d="M20 32h24M32 20v24" stroke="${b}" stroke-width="4"/>`;
+    }
+
+    return `<svg class="item-icon-svg" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="10" fill="rgba(255,255,255,.06)"/>${shape}</svg>`;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "world-survival",
+  "version": "1.0.0",
+  "description": "世界生存 - 3D Survival Game",
+  "scripts": {
+    "build": "node copy-to-www.js",
+    "sync": "npx cap sync android",
+    "android": "npx cap open android"
+  },
+  "keywords": [
+    "survival",
+    "3d",
+    "game"
+  ],
+  "author": "xhw8848",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/cli": "^5.7.8",
+    "@capacitor/core": "^5.7.8"
+  },
+  "devDependencies": {
+    "netlify-cli": "^27.0.1",
+    "typescript": "^7.0.2"
+  }
+}

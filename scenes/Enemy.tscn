@@ -1,0 +1,46 @@
+[gd_scene load_steps=8 format=3 uid="uid://bp2enemy2tscn3d"]
+
+[ext_resource type="Script" path="res://scripts/Enemy.gd" id="1_enemy"]
+
+[sub_resource type="CapsuleMesh" id="EnemyMesh"]
+radius = 0.4
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="EnemyMat"]
+albedo_color = Color(0.6, 0.1, 0.1, 1)
+roughness = 0.7
+
+[sub_resource type="CapsuleShape3D" id="EnemyShape"]
+radius = 0.4
+height = 1.6
+
+[sub_resource type="SphereShape3D" id="DetectShape"]
+radius = 15.0
+
+[node name="Enemy" type="CharacterBody3D"]
+script = ExtResource("1_enemy")
+collision_layer = 4
+collision_mask = 1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("EnemyMesh")
+material_override = SubResource("EnemyMat")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("EnemyShape")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+radius = 0.5
+height = 1.6
+avoidance_enabled = true
+
+[node name="DetectionArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectCollision" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("DetectShape")

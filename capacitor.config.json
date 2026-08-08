@@ -1,0 +1,11 @@
+{
+  "appId": "com.worldsurvival.game",
+  "appName": "世界生存",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

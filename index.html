@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1a2a1a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="世界生存">
@@ -21,6 +22,66 @@
             <p>3D Survival Game</p>
             <div class="loading-bar"><div id="loadingFill"></div></div>
             <p id="loadingText">正在加载资源...</p>
+        </div>
+        <div class="version-tag">石之维度</div>
+    </div>
+
+    <!-- 登录界面 -->
+    <div id="loginScreen" style="display:none">
+        <div class="login-content">
+            <h1>🌍 世界生存</h1>
+            <p class="subtitle">登录你的存档</p>
+            <div class="login-form">
+                <input type="text" id="usernameInput" placeholder="输入用户名" maxlength="12" autocomplete="off">
+                <input type="password" id="passwordInput" placeholder="输入密码" maxlength="20" autocomplete="off">
+                <button id="loginBtn" class="btn-login">登录 / 注册</button>
+            </div>
+            <div id="existingUsers" class="existing-users"></div>
+            <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
+        </div>
+        <div class="version-tag">石之维度</div>
+    </div>
+
+    <!-- 主菜单 -->
+    <div id="mainMenuScreen" style="display:none">
+        <div class="main-menu-content">
+            <h1>🌍 世界生存</h1>
+            <p class="subtitle" id="welcomeText">欢迎</p>
+            <div class="menu-buttons">
+                <button id="btnPrivateGame" class="menu-btn menu-private">
+                    <span class="menu-icon">💾</span>
+                    <span class="menu-label">私人存档</span>
+                    <span class="menu-desc">单人游戏，独立存档</span>
+                </button>
+                <button id="btnMultiplayer" class="menu-btn menu-multi">
+                    <span class="menu-icon">🌐</span>
+                    <span class="menu-label">多人游戏</span>
+                    <span class="menu-desc">联机对战，与其他玩家一起</span>
+                </button>
+            </div>
+            <button id="btnBackToLogin" class="btn-back">← 返回登录</button>
+            <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
+        </div>
+        <div class="version-tag">石之维度</div>
+    </div>
+
+    <!-- 私人存档选择 -->
+    <div id="saveSlotScreen" style="display:none">
+        <div class="save-slot-content">
+            <h1>💾 私人存档</h1>
+            <p class="subtitle">选择一个存档开始游戏（最多5个）</p>
+            <div id="saveSlotList" class="save-slot-list"></div>
+            <button id="btnBackToMenuFromSlots" class="btn-back">← 返回主菜单</button>
+        </div>
+    </div>
+
+    <!-- 多人房间列表 -->
+    <div id="roomListScreen" style="display:none">
+        <div class="room-list-content">
+            <h1>🌐 多人游戏</h1>
+            <p class="subtitle">选择一个房间加入</p>
+            <div id="roomList" class="room-list"></div>
+            <button id="btnBackToMenu" class="btn-back">← 返回主菜单</button>
         </div>
     </div>
 
@@ -52,6 +113,15 @@
 
     <!-- 游戏HUD -->
     <div id="gameHUD" style="display:none">
+        <!-- 退出登录 -->
+        <button id="logoutBtn">退出登录</button>
+        <!-- 多人玩家列表 -->
+        <div id="mpPlayerList" style="display:none"></div>
+        <!-- 聊天框 -->
+        <div id="chatBox" style="display:none">
+            <div id="chatMessages"></div>
+            <input type="text" id="chatInput" placeholder="按T说话..." maxlength="100" autocomplete="off">
+        </div>
         <!-- 准星 -->
         <div id="crosshair">+</div>
 
@@ -72,6 +142,10 @@
             <div class="stat-row">
                 <span class="stat-icon">🌡️</span>
                 <div class="stat-bar"><div id="tempBar" class="bar-fill bar-temp"></div><span id="tempText">37°C</span></div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🛡️</span>
+                <div class="stat-bar"><div id="armorBar" class="bar-fill bar-armor" style="width:0%"></div><span id="armorText">0</span></div>
             </div>
         </div>
 
@@ -136,9 +210,23 @@
             <h2>📦 背包</h2>
             <button class="btn-close" data-close="inventoryUI">✕</button>
         </div>
-        <div id="inventoryGrid"></div>
+        <div class="inventory-layout">
+            <div id="equipmentPanel" class="equipment-panel">
+                <h3>装备</h3>
+                <div class="equip-slot" data-equip-slot="head" title="头盔"><span class="equip-label">头</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="chest" title="胸甲"><span class="equip-label">胸</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="legs" title="护腿"><span class="equip-label">腿</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="feet" title="靴子"><span class="equip-label">脚</span><span class="slot-icon"></span></div>
+                <div class="armor-info">盔甲值: <span id="armorValue">0</span></div>
+                <div class="equip-slot" data-equip-slot="talisman1" title="护身符1"><span class="equip-label">符1</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="talisman2" title="护身符2"><span class="equip-label">符2</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="talisman3" title="护身符3"><span class="equip-label">符3</span><span class="slot-icon"></span></div>
+                <div class="equip-slot" data-equip-slot="talisman4" title="护身符4"><span class="equip-label">符4</span><span class="slot-icon"></span></div>
+            </div>
+            <div id="inventoryGrid"></div>
+        </div>
         <div class="panel-footer">
-            <p>点击物品分配到快捷栏 | 拖拽排序</p>
+            <p>点击物品分配到快捷栏 | 右键装备盔甲 | 点击装备槽卸下</p>
         </div>
     </div>
 
@@ -154,9 +242,159 @@
             <button class="craft-cat" data-cat="weapon">武器</button>
             <button class="craft-cat" data-cat="building">建筑</button>
             <button class="craft-cat" data-cat="consumable">食物</button>
+            <button class="craft-cat" data-cat="equipment">装备</button>
             <button class="craft-cat" data-cat="material">材料</button>
         </div>
         <div id="craftingList"></div>
+    </div>
+
+    <!-- 自动挖矿器存储界面 -->
+    <div id="minerUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>⛏️ 自动挖矿器</h2>
+            <button class="btn-close" data-close="minerUI">✕</button>
+        </div>
+        <div class="miner-status" id="minerStatus"></div>
+        <p class="miner-help">将木镐、石镐或铁镐放入工具槽，可减少挖矿时间；点击矿石再点击背包取出</p>
+        <h3>镐子工具槽（3格）</h3>
+        <div id="minerToolGrid" class="miner-tool-grid"></div>
+        <div class="miner-layout">
+            <div>
+                <h3>矿石器存储</h3>
+                <div id="minerStorageGrid" class="miner-grid"></div>
+            </div>
+            <div>
+                <h3>物品栏与背包</h3>
+                <div id="minerInventoryGrid" class="miner-inventory-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 箱子界面 -->
+    <div id="chestUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>📦 箱子</h2>
+            <button class="btn-close" data-close="chestUI">✕</button>
+        </div>
+        <p class="miner-help">点击物品再点击另一侧格子进行存取</p>
+        <div class="miner-layout">
+            <div>
+                <h3>背包</h3>
+                <div id="chestInventoryGrid" class="miner-inventory-grid"></div>
+            </div>
+            <div>
+                <h3>箱子</h3>
+                <div id="chestStorageGrid" class="miner-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 稀有木堆界面 -->
+    <div id="rareWoodPileUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>🪵 稀有木堆</h2>
+            <button class="btn-close" data-close="rareWoodPileUI">✕</button>
+        </div>
+        <p class="miner-help">放入99个木材可召唤树精！</p>
+        <div class="miner-layout">
+            <div>
+                <h3>背包</h3>
+                <div id="rareWoodPileInventoryGrid" class="miner-inventory-grid"></div>
+            </div>
+            <div>
+                <h3>木堆 (1格)</h3>
+                <div id="rareWoodPileStorageGrid" class="miner-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 普通祭坛界面 -->
+    <div id="altarUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>🪨 普通祭坛</h2>
+            <button class="btn-close" data-close="altarUI">✕</button>
+        </div>
+        <p class="miner-help">放入99个木材可召唤树精！祭坛不会消失。</p>
+        <div class="miner-layout">
+            <div>
+                <h3>背包</h3>
+                <div id="altarInventoryGrid" class="miner-inventory-grid"></div>
+            </div>
+            <div>
+                <h3>祭坛 (1格)</h3>
+                <div id="altarStorageGrid" class="miner-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最终书架界面 -->
+    <div id="ultimateBookshelfUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>📚 最终书架</h2>
+            <button class="btn-close" data-close="ultimateBookshelfUI">✕</button>
+        </div>
+        <p class="miner-help">最终书架可合成特殊护身符</p>
+        <div id="ultimateBookshelfList"></div>
+    </div>
+
+    <!-- 传送石碑命名界面 -->
+    <div id="monumentUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>🪨 传送石碑</h2>
+            <button class="btn-close" data-close="monumentUI">✕</button>
+        </div>
+        <p class="miner-help">为石碑命名后，在聊天框输入 /k 石碑名称 即可传送到此处</p>
+        <div style="padding:10px 5px;">
+            <input type="text" id="monumentNameInput" placeholder="输入石碑名称..." maxlength="20" autocomplete="off" style="width:90%;padding:8px;font-size:16px;border:1px solid #555;border-radius:6px;background:#222;color:#fff;">
+            <div id="monumentCurrentName" style="margin-top:8px;color:#aaa;font-size:14px;"></div>
+            <button id="btnMonumentConfirm" style="margin-top:10px;padding:8px 20px;font-size:16px;border:none;border-radius:6px;background:#4a8a3a;color:#fff;cursor:pointer;">确认命名</button>
+        </div>
+    </div>
+
+    <!-- 神秘盒充能界面 -->
+    <div id="mysteryBoxUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>📦 神秘盒</h2>
+            <button class="btn-close" id="btnMysteryBoxClose">✕</button>
+        </div>
+        <p class="miner-help">放入神木和木质装备，点击开始充能。每1个神木=充能+1</p>
+        <div style="display:flex;gap:20px;padding:10px 5px;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+                <div style="color:#ffd700;font-size:14px;margin-bottom:5px;">神木</div>
+                <div id="mysteryBoxDivineSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+            <div style="font-size:24px;color:#ffaa44;">➜</div>
+            <div style="text-align:center;">
+                <div style="color:#8b5a2b;font-size:14px;margin-bottom:5px;">木质装备</div>
+                <div id="mysteryBoxEquipSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+        </div>
+        <div style="text-align:center;margin:10px 0;">
+            <button id="btnMysteryBoxStart" style="padding:8px 24px;font-size:16px;border:none;border-radius:6px;background:#ffaa44;color:#222;cursor:pointer;" disabled>开始充能</button>
+        </div>
+        <div style="border-top:1px solid #444;margin-top:8px;padding-top:8px;">
+            <div style="color:#aaa;font-size:13px;margin-bottom:5px;">背包中的神木和木质装备：</div>
+            <div id="mysteryBoxInventoryGrid" style="display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- 黄金祭坛界面 -->
+    <div id="goldAltarUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>🌟 黄金祭坛</h2>
+            <button class="btn-close" data-close="goldAltarUI">✕</button>
+        </div>
+        <p class="miner-help">放入1个穿越器和5个石头，献祭后传送到金维度！</p>
+        <div class="miner-layout">
+            <div>
+                <h3>背包</h3>
+                <div id="goldAltarInventoryGrid" class="miner-inventory-grid"></div>
+            </div>
+            <div>
+                <h3>祭坛 (2格)</h3>
+                <div id="goldAltarStorageGrid" class="miner-grid"></div>
+            </div>
+        </div>
     </div>
 
     <!-- 建造提示 -->
@@ -167,11 +405,23 @@
             <button class="build-option" data-item="wall_stone">石墙</button>
             <button class="build-option" data-item="campfire">篝火</button>
             <button class="build-option" data-item="torch">火把</button>
+            <button class="build-option" data-item="knowledge_bookshelf">知识书架</button>
+            <button class="build-option" data-item="auto_miner">自动挖矿器</button>
+            <button class="build-option" data-item="chest">箱子</button>
+            <button class="build-option" data-item="forge">锻造台</button>
+            <button class="build-option" data-item="rare_wood_pile">稀有木堆</button>
+            <button class="build-option" data-item="ultimate_bookshelf">最终书架</button>
+            <button class="build-option" data-item="portal">穿越器</button>
+            <button class="build-option" data-item="teleport_monument">传送石碑</button>
+            <button class="build-option" data-item="mystery_box">神秘盒</button>
+            <button class="build-option" data-item="gold_altar">黄金祭坛</button>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.5/dist/mqtt.min.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/item-icons.js"></script>
     <script src="js/inventory.js"></script>
     <script src="js/survival.js"></script>
     <script src="js/world.js"></script>
@@ -179,10 +429,29 @@
     <script src="js/enemies.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/mobile.js"></script>
+    <script src="js/save.js"></script>
+    <script src="js/multiplayer.js"></script>
     <script src="js/main.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                reg.update();
+                reg.addEventListener('updatefound', () => {
+                    const nw = reg.installing;
+                    if (nw) {
+                        nw.addEventListener('statechange', () => {
+                            if (nw.state === 'activated' && navigator.serviceWorker.controller) {
+                                window.location.reload();
+                            }
+                        });
+                    }
+                });
+            }).catch(() => {});
+
+            // 监听控制器变更（新SW接管时自动刷新）
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
+            });
         }
     </script>
 </body>
