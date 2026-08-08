@@ -16,8 +16,8 @@ class EnemySystem {
     }
 
     // Boss造成伤害：攻击本地玩家 + 同步到其他在线玩家
-    _bossDamagePlayers(damage) {
-        this.player.takeDamage(damage);
+    _bossDamagePlayers(damage, attacker = null) {
+        this.player.takeDamage(damage, attacker);
         if (window.game.multiplayer && window.game.multiplayer.connected) {
             for (const username of Object.keys(window.game.multiplayer.players)) {
                 const p = window.game.multiplayer.players[username];
@@ -1630,6 +1630,133 @@ class EnemySystem {
         this._createHealthBar(enemy);
     }
 
+    _spawnGoldMonster(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // 身体 - 金色岩石
+        const bodyGeo = new THREE.DodecahedronGeometry(0.7, 3);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, flatShading: false, metalness: 0.9, envMapIntensity: 0.6 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.7;
+        body.scale.set(1.2, 1.0, 1.2);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+        // 裂纹（金色暗纹）
+        const gmCrackMat = new THREE.MeshStandardMaterial({ color: 0x8b6508, roughness: 0.95, flatShading: false });
+        const gmCrack1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.04), gmCrackMat);
+        gmCrack1.position.set(0.1, 0.8, 0.55); gmCrack1.rotation.z = 0.3; group.add(gmCrack1);
+        const gmCrack2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), gmCrackMat);
+        gmCrack2.position.set(-0.15, 0.6, 0.55); group.add(gmCrack2);
+        // 金色发光斑块
+        const gmGlowGeo = new THREE.DodecahedronGeometry(0.1, 0);
+        const gmGlowMat = new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.05, flatShading: false, emissive: 0xffdd00, emissiveIntensity: 0.5, metalness: 1.0 });
+        const gmGlow1 = new THREE.Mesh(gmGlowGeo, gmGlowMat);
+        gmGlow1.position.set(-0.5, 0.5, 0.3); gmGlow1.scale.set(1, 0.3, 1); group.add(gmGlow1);
+        const gmGlow2 = new THREE.Mesh(gmGlowGeo, gmGlowMat);
+        gmGlow2.position.set(0.4, 1.0, -0.3); gmGlow2.scale.set(1, 0.4, 1); group.add(gmGlow2);
+        // 浮动金碎片
+        const fragGeo = new THREE.DodecahedronGeometry(0.08, 0);
+        const fragMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.1, flatShading: false, metalness: 0.95 });
+        const frag1 = new THREE.Mesh(fragGeo, fragMat);
+        frag1.position.set(0.6, 1.2, 0.3); frag1.castShadow = true; group.add(frag1);
+        const frag2 = new THREE.Mesh(fragGeo, fragMat);
+        frag2.position.set(-0.55, 0.3, 0.4); frag2.castShadow = true; group.add(frag2);
+        const frag3 = new THREE.Mesh(fragGeo, fragMat);
+        frag3.position.set(0.5, 0.2, -0.3); frag3.castShadow = true; group.add(frag3);
+
+        // 头 - 金色岩石
+        const headGeo = new THREE.DodecahedronGeometry(0.42, 3);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.12, flatShading: false, metalness: 0.9 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        group.add(head);
+        // 头部裂纹
+        const gmHeadCrack = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.04), gmCrackMat);
+        gmHeadCrack.position.set(0.1, 1.5, 0.35); group.add(gmHeadCrack);
+
+        // 眼睛 - 发光金缝
+        const eyeGeo = new THREE.SphereGeometry(0.09, 10, 8);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.15, 1.55, 0.32);
+        group.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.15, 1.55, 0.32);
+        group.add(eyeR);
+        // 眼睛光晕
+        const eyeLight = new THREE.PointLight(0xffff00, 0.8, 4);
+        eyeLight.position.set(0, 1.55, 0.4);
+        group.add(eyeLight);
+
+        // 手臂 - 两侧金色石块
+        const armGeo = new THREE.DodecahedronGeometry(0.27, 2);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.15, flatShading: false, metalness: 0.9 });
+        const armL = new THREE.Mesh(armGeo, armMat);
+        armL.position.set(-0.8, 0.8, 0);
+        armL.castShadow = true;
+        group.add(armL);
+        const armR = new THREE.Mesh(armGeo, armMat);
+        armR.position.set(0.8, 0.8, 0);
+        armR.castShadow = true;
+        group.add(armR);
+        // 手臂末端尖刺
+        const gmSpikeGeo = new THREE.ConeGeometry(0.05, 0.15, 5);
+        const gmSpikeMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.1, flatShading: false, metalness: 0.95 });
+        const gmSpikeL = new THREE.Mesh(gmSpikeGeo, gmSpikeMat);
+        gmSpikeL.position.set(-0.8, 0.55, 0.15); gmSpikeL.rotation.x = Math.PI / 2; group.add(gmSpikeL);
+        const gmSpikeR = new THREE.Mesh(gmSpikeGeo, gmSpikeMat);
+        gmSpikeR.position.set(0.8, 0.55, 0.15); gmSpikeR.rotation.x = Math.PI / 2; group.add(gmSpikeR);
+        // 底部金碎石基座
+        const gmRubbleGeo = new THREE.DodecahedronGeometry(0.07, 0);
+        const gmRubbleMat = new THREE.MeshStandardMaterial({ color: 0x8b6508, roughness: 0.2, flatShading: false, metalness: 0.85 });
+        for (let i = 0; i < 4; i++) {
+            const ang = (i / 4) * Math.PI * 2;
+            const r = new THREE.Mesh(gmRubbleGeo, gmRubbleMat);
+            r.position.set(Math.cos(ang) * 0.45, 0.02, Math.sin(ang) * 0.35);
+            r.scale.set(1, 0.5, 1);
+            r.castShadow = true;
+            group.add(r);
+        }
+
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            health: 300,
+            maxHealth: 300,
+            speed: 0.6,
+            damage: 20,
+            attackRange: 2.5,
+            attackCooldown: 0,
+            dead: false,
+            state: 'idle',
+            wanderDir: new THREE.Vector3(),
+            wanderTimer: 0,
+            bodyMat: bodyMat,
+            hitFlash: 0,
+            enemyType: 'gold_monster',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            defense: 2,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                const actualDamage = Math.max(0, amount - this.defense);
+                this.health -= actualDamage;
+                this.hitFlash = 0.2;
+                if (this.health <= 0) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
     _spawnPetrifiedHuman(x, y, z) {
         const group = new THREE.Group();
         group.position.set(x, y, z);
@@ -2583,6 +2710,73 @@ class EnemySystem {
         }
     }
 
+    _spawnGoldTreeSpirit(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // 金色树干和树冠（简化版）
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.45, metalness: 0.6, emissive: 0x332200, emissiveIntensity: 0.2 });
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 3.2, 12), trunkMat);
+        trunk.position.y = 1.6; trunk.castShadow = true; trunk.receiveShadow = true; group.add(trunk);
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.4, 14, 10), new THREE.MeshStandardMaterial({ color: 0xe0c060, roughness: 0.7, metalness: 0.25 }));
+        crown.position.y = 3.7; crown.castShadow = true; group.add(crown);
+        // 手臂
+        const armGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.2, 8);
+        const armL = new THREE.Mesh(armGeo, trunkMat); armL.position.set(-0.9, 1.3, 0); armL.rotation.z = Math.PI/4; group.add(armL);
+        const armR = new THREE.Mesh(armGeo, trunkMat); armR.position.set(0.9, 1.3, 0); armR.rotation.z = -Math.PI/4; group.add(armR);
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            bodyMat: trunkMat,
+            hitFlash: 0,
+            enemyType: 'gold_tree_spirit',
+            maxHealth: 1000,
+            health: 1000,
+            speed: 1.2,
+            damage: 15,
+            defense: 5,
+            attackRange: 2.2,
+            attackCooldown: 0,
+            rootCooldown: 0,
+            rangedCooldown: 0,
+            phase2: false,
+            wanderDir: new THREE.Vector3(1,0,0),
+            wanderTimer: 0,
+            projectiles: [],
+            playerHit: false,
+            dropsAwarded: false,
+            takeDamage: (amount, attacker = null) => {
+                if (attacker) enemy.playerHit = true;
+                // 不受任何工具加成：由玩家侧已处理，这里仅做防御减伤
+                const actual = Math.max(0, amount - enemy.defense);
+                enemy.health = Math.max(0, enemy.health - actual);
+                enemy.hitFlash = 0.2;
+                this._updateHealthBar(enemy);
+                if (enemy.health <= 0 && !enemy.phase2) {
+                    // 进入第二阶段
+                    enemy.phase2 = true;
+                    enemy.maxHealth = 600;
+                    enemy.health = 600;
+                    enemy.damage = 32;
+                    // 长出四枝
+                    for (let i = 0; i < 4; i++) {
+                        const br = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1.2, 8), trunkMat);
+                        const ang = (i/4)*Math.PI*2;
+                        br.position.set(Math.cos(ang)*0.9, 1.6, Math.sin(ang)*0.9);
+                        br.rotation.set(0, ang, (i%2===0?1:-1)*Math.PI/4);
+                        group.add(br);
+                    }
+                    if (window.game) window.game.onMessage('金树精进入第二阶段！');
+                } else if (enemy.health <= 0 && enemy.phase2) {
+                    enemy.dead = true; enemy.deathTimer = 0;
+                }
+            }
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
     _spawnEnhancedTreeGuardian(x, y, z) {
         this._spawnTreeGuardian(x, y, z);
         const e = this.enemies[this.enemies.length - 1];
@@ -2860,9 +3054,9 @@ class EnemySystem {
                         if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
                             e.attackCooldown = 1.5;
                             if (e.enemyType === 'stone_monster_boss' || e.enemyType === 'giant_stone_boss') {
-                                this._bossDamagePlayers(e.damage);
+                                this._bossDamagePlayers(e.damage, e);
                             } else {
-                                this.player.takeDamage(e.damage);
+                                this.player.takeDamage(e.damage, e);
                             }
                         }
                         // 石志怪boss远程攻击玩家（检测到就发射，每5秒1次）
@@ -2879,6 +3073,154 @@ class EnemySystem {
                         }
                         e.mesh.position.x += e.wanderDir.x * e.speed * 0.3 * dt;
                         e.mesh.position.z += e.wanderDir.z * e.speed * 0.3 * dt;
+                    }
+                }
+            }
+            return;
+        }
+
+        // 金维度：生成金之怪/金树精
+        if (this.world.worldType === 'gold') {
+            // 清除非金维度敌人
+            for (const e of this.enemies) {
+                if (!e.dead && e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') { e.dead = true; e.deathTimer = 2; }
+            }
+            // 生成金之怪
+            this.spawnTimer += dt;
+            if (this.spawnTimer >= this.spawnInterval) {
+                this.spawnTimer = 0;
+                const playerPos = this.player.position;
+                const maxGoldMonsters = 3 + Math.floor(this.world.dayCount / 2);
+                const goldCount = this.enemies.filter(e => !e.dead && e.enemyType === 'gold_monster').length;
+                if (goldCount < maxGoldMonsters) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 20 + Math.random() * 20;
+                    const x = playerPos.x + Math.cos(angle) * dist;
+                    const z = playerPos.z + Math.sin(angle) * dist;
+                    const y = this.world.getHeight(x, z);
+                    this._spawnGoldMonster(x, y, z);
+                }
+            }
+            // 更新金维度敌人
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const e = this.enemies[i];
+                if (e.dead) {
+                    this._awardDrops(e);
+                    if (e.healthBar) e.healthBar.sprite.visible = false;
+                    e.deathTimer = (e.deathTimer || 0) + dt;
+                    e.mesh.position.y -= dt * 2;
+                    if (e.deathTimer > 1.5) {
+                        this.scene.remove(e.mesh);
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                if (e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') {
+                    // 清除非金维度敌人的死亡动画
+                    e.deathTimer += dt;
+                    if (e.deathTimer > 1.5) {
+                        if (e.mesh) {
+                            this.world.scene.remove(e.mesh);
+                            e.mesh.traverse(c => {
+                                if (c.geometry) c.geometry.dispose();
+                                if (c.material) c.material.dispose();
+                            });
+                        }
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                // 受击闪烁
+                if (e.hitFlash > 0) {
+                    e.hitFlash -= dt;
+                    e.bodyMat.emissive.setHex(0x442200);
+                    if (e.hitFlash <= 0) e.bodyMat.emissive.setHex(0x000000);
+                    this._updateHealthBar(e);
+                }
+                e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+                if (e.rootCooldown !== undefined) e.rootCooldown = Math.max(0, e.rootCooldown - dt);
+                if (e.rangedCooldown !== undefined) e.rangedCooldown = Math.max(0, e.rangedCooldown - dt);
+                // 重力
+                e.mesh.position.y -= 15 * dt;
+                let groundY = this.world.getHeight(e.mesh.position.x, e.mesh.position.z);
+                if (e.mesh.position.y < groundY) e.mesh.position.y = groundY;
+                // AI：追击玩家
+                const playerPos = this.player.position;
+                const distToPlayer = e.mesh.position.distanceTo(playerPos);
+                const aggroRange = 20;
+                if (distToPlayer < aggroRange) {
+                    const dir = playerPos.clone().sub(e.mesh.position);
+                    dir.y = 0;
+                    dir.normalize();
+                    e.mesh.position.x += dir.x * e.speed * dt;
+                    e.mesh.position.z += dir.z * e.speed * dt;
+                    e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                    if (e.enemyType === 'gold_tree_spirit') {
+                        // 距离>17m时每4s缠绕+10伤害
+                        if (distToPlayer > 17 && e.rootCooldown <= 0) {
+                            e.rootCooldown = 4;
+                            this.player.stunTimer = 1.5;
+                            this.player.takeDamage(10, e);
+                            if (window.game) window.game.onMessage('你被金树精的藤蔓缠住了！');
+                        }
+                        if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+                            e.attackCooldown = 1.5;
+                            this.player.takeDamage(e.damage, e);
+                        }
+                        // 二阶段远程
+                        if (e.phase2 && e.rangedCooldown <= 0) {
+                            e.rangedCooldown = 5;
+                            if (Math.random() < 0.42) {
+                                // 藤蔓拉扯
+                                const toPlayer = this.player.position.clone().sub(e.mesh.position);
+                                toPlayer.y = 0; toPlayer.multiplyScalar(0.5);
+                                this.player.position.copy(e.mesh.position.clone().add(toPlayer));
+                                this.player.stunTimer = 3;
+                                if (window.game) window.game.onMessage('金树精用藤蔓将你拉了回来！');
+                            } else {
+                                const enemyPos = e.mesh.position.clone(); enemyPos.y += 1.8;
+                                const dir2 = playerPos.clone().sub(enemyPos).normalize();
+                                const wood = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.9), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 }));
+                                wood.position.copy(enemyPos);
+                                wood.rotation.y = Math.atan2(dir2.x, dir2.z);
+                                wood.castShadow = true; this.scene.add(wood);
+                                e.projectiles.push({ mesh: wood, velocity: dir2.multiplyScalar(10), damage: 10, life: 3, type: 'gold_wood' });
+                            }
+                        }
+                    } else if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+                        e.attackCooldown = 1.5;
+                        this.player.takeDamage(e.damage, e);
+                    }
+                } else {
+                    e.wanderTimer -= dt;
+                    if (e.wanderTimer <= 0) {
+                        e.wanderTimer = 2 + Math.random() * 3;
+                        const a = Math.random() * Math.PI * 2;
+                        e.wanderDir.set(Math.cos(a), 0, Math.sin(a));
+                    }
+                    e.mesh.position.x += e.wanderDir.x * e.speed * 0.3 * dt;
+                    e.mesh.position.z += e.wanderDir.z * e.speed * 0.3 * dt;
+                }
+                // 更新金树精弹射物
+                if (e.enemyType === 'gold_tree_spirit' && e.projectiles && e.projectiles.length) {
+                    for (let pi = e.projectiles.length - 1; pi >= 0; pi--) {
+                        const p = e.projectiles[pi];
+                        p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+                        p.life -= dt;
+                        const dToPlayer = p.mesh.position.distanceTo(this.player.position);
+                        if (dToPlayer < 1.2) {
+                            this.player.takeDamage(p.damage, e);
+                            this.player.stunTimer = 5;
+                            this.scene.remove(p.mesh);
+                            p.mesh.geometry.dispose(); if (p.mesh.material) p.mesh.material.dispose();
+                            e.projectiles.splice(pi,1); continue;
+                        }
+                        const gy = this.world.getHeight(p.mesh.position.x, p.mesh.position.z);
+                        if (p.mesh.position.y < gy || p.life <= 0) {
+                            this.scene.remove(p.mesh);
+                            p.mesh.geometry.dispose(); if (p.mesh.material) p.mesh.material.dispose();
+                            e.projectiles.splice(pi,1);
+                        }
                     }
                 }
             }
@@ -3111,7 +3453,7 @@ class EnemySystem {
                         const selItem = this.player.inventory.getSelectedItem();
                         const isAxe = selItem && (selItem.id === 'wood_axe' || selItem.id === 'stone_axe' || selItem.id === 'iron_axe' || selItem.id === 'steel_axe' || selItem.id === 'ultimate_axe' || selItem.id === 'certain_one');
                         const dmg = isAxe ? e.damage + 5 : e.damage;
-                        this.player.takeDamage(dmg);
+                        this.player.takeDamage(dmg, e);
                     }
                 }
                 continue;
@@ -3241,7 +3583,7 @@ class EnemySystem {
 
                 if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
                     e.attackCooldown = 1.5;
-                    this._bossDamagePlayers(e.damage);
+                    this._bossDamagePlayers(e.damage, e);
                 }
             } else {
                 // 闲置游走
@@ -3309,7 +3651,7 @@ class EnemySystem {
         enemy.dropsAwarded = true;
 
         // Boss死亡同步到多人游戏
-        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie') {
+        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_tree_spirit') {
             if (window.game.multiplayer && window.game.multiplayer.connected) {
                 window.game.multiplayer.sendBossDeath(enemy.enemyType);
             }
@@ -3329,6 +3671,17 @@ class EnemySystem {
             if (Math.random() < 0.05) stoneCount += 4;
             window.game.inventory.addItem('stone', stoneCount);
             window.game.onMessage(`击杀石之怪! 获得${stoneCount}个石头`);
+        } else if (enemy.enemyType === 'gold_monster') {
+            let goldOreCount = 2;
+            if (Math.random() < 0.50) goldOreCount += 1;
+            if (Math.random() < 0.25) goldOreCount += 2;
+            let msg = `击杀金之怪! 获得${goldOreCount}个金矿`;
+            window.game.inventory.addItem('gold_ore', goldOreCount);
+            if (Math.random() < 0.15) {
+                window.game.inventory.addItem('gold_coin', 1);
+                msg += '，1个金平!';
+            }
+            window.game.onMessage(msg);
         } else if (enemy.enemyType === 'stone_guardian') {
             let msg = '击杀石守卫! 获得3个石头';
             window.game.inventory.addItem('stone', 3);
@@ -3390,6 +3743,9 @@ class EnemySystem {
                 msg += '，额外获得5个高级木材+5个高级柳条';
             }
             window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'gold_tree_spirit') {
+            window.game.inventory.addItem('divine_wood', 1);
+            window.game.onMessage('击杀金树精! 获得1个最终木材');
         } else if (enemy.enemyType === 'gold_zombie') {
             let coinCount = 3;
             if (Math.random() < 0.50) coinCount += 2;

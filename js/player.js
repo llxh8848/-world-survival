@@ -32,6 +32,7 @@ class Player {
         this.recycleTarget = null;
         this.recycleTimer = 0;
         this.recycleTotal = 0;
+        this.stunTimer = 0;
 
         this.keys = {};
         this.thirdPerson = false;
@@ -530,7 +531,25 @@ class Player {
         }
     }
 
+    _consumeDurabilityForSelected() {
+        const sel = this.inventory.getSelectedItem();
+        if (!sel) return;
+        const info = this._getItemInfo(sel.id) || {};
+        const maxUses = info.maxUses;
+        if (!maxUses) return;
+        sel.uses = (sel.uses || 0) + 1;
+        const remaining = Math.max(0, maxUses - sel.uses);
+        if (sel.uses >= maxUses) {
+            this.inventory.removeItem(sel.id, 1);
+            if (window.game) window.game.onMessage(`${info.name || sel.id} 已损坏`);
+        } else {
+            if (window.game) window.game.onMessage(`${info.name || sel.id} 耐久剩余: ${remaining}`);
+        }
+        this.inventory.notify();
+    }
+
     _attack() {
+        if (this.stunTimer && this.stunTimer > 0) return;
         if (this.attackCooldown > 0) return;
         this.attackCooldown = 0.4;
         this.attackAnim = 0.25;
@@ -589,6 +608,10 @@ class Player {
                 } else {
                     window.game.onMessage(`砍树中... ${resource.health}/${resource.maxHealth}`);
                 }
+                // 工具耐久（砍树/挖矿命中时消耗）
+                if ((resource.group === 'tree' || resource.group === 'rock') && selectedItem) {
+                    this._consumeDurabilityForSelected();
+                }
             }
         }
 
@@ -619,7 +642,7 @@ class Player {
                             }
                         }
                         // 镐子对石守卫/石化人无视防御值额外伤害
-                        if (selectedItem && (enemy.enemyType === 'stone_guardian' || enemy.enemyType === 'petrified_human' || enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'gold_zombie')) {
+                        if (selectedItem && (enemy.enemyType === 'stone_guardian' || enemy.enemyType === 'petrified_human' || enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_monster')) {
                             const pickBonus = { wood_pickaxe: 5, stone_pickaxe: 10, iron_pickaxe: 20, steel_pickaxe: 25, ultimate_pickaxe: 40, certain_one: 40 }[selectedItem.id];
                             if (pickBonus) {
                                 enemy.health -= pickBonus + 1;
@@ -633,6 +656,10 @@ class Player {
                             }
                         }
                         enemy.takeDamage(damage, this);
+                        // 武器/工具耐久（命中敌人消耗）
+                        if (selectedItem) {
+                            this._consumeDurabilityForSelected();
+                        }
                         if (window.game && window.game.enemies) window.game.enemies._updateHealthBar(enemy);
                     }
                 }
@@ -644,21 +671,11 @@ class Player {
             window.game.multiplayer.checkPvPAttack(damage);
         }
 
-        // 狂欢之剑使用次数消耗
-        if (selectedItem && selectedItem.id === 'carnival_sword') {
-            selectedItem.uses = (selectedItem.uses || 0) + 1;
-            const maxUses = this._getItemInfo('carnival_sword').maxUses || 5;
-            if (selectedItem.uses >= maxUses) {
-                this.inventory.removeItem('carnival_sword', 1);
-                window.game.onMessage('狂欢之剑已达到使用上限，消失了！');
-            } else {
-                window.game.onMessage(`狂欢之剑剩余使用次数: ${maxUses - selectedItem.uses}`);
-            }
-            this.inventory.notify();
-        }
+        // 耐久统一在命中/采集中已扣除
     }
 
     _useItem() {
+        if (this.stunTimer && this.stunTimer > 0) return;
         const selectedItem = this.inventory.getSelectedItem();
         if (!selectedItem) return;
         const info = this._getItemInfo(selectedItem.id);
@@ -1000,6 +1017,10 @@ class Player {
         this.attackCooldown = Math.max(0, this.attackCooldown - dt);
         this.attackAnim = Math.max(0, this.attackAnim - dt);
 
+        // 眩晕计时
+        this.stunTimer = Math.max(0, (this.stunTimer || 0) - dt);
+        const stunned = this.stunTimer > 0;
+
         // 确凿者光环：每5秒对5m内怪物造成伤害
         this.certainOneTimer = (this.certainOneTimer || 0) + dt;
         if (this.certainOneTimer >= 5) {
@@ -1043,8 +1064,8 @@ class Player {
         if (this.keys['KeyD']) moveDir.add(right);
         moveDir.normalize();
 
-        const sprinting = this.keys['ShiftLeft'] && this.survival.hunger > 5;
-        const speed = (sprinting ? this.sprintSpeed : this.walkSpeed) + (this.survival.getSpeedBonus ? this.survival.getSpeedBonus() : 0);
+        const sprinting = this.keys['ShiftLeft'] && this.survival.hunger > 5 && !stunned;
+        const speed = (stunned ? 0 : (sprinting ? this.sprintSpeed : this.walkSpeed)) + (this.survival.getSpeedBonus ? this.survival.getSpeedBonus() : 0);
 
         this.velocity.x = moveDir.x * speed;
         this.velocity.z = moveDir.z * speed;
@@ -1053,7 +1074,7 @@ class Player {
         this.velocity.y -= this.gravity * dt;
 
         // 跳跃
-        if (this.keys['Space'] && this.onGround) {
+        if (!stunned && this.keys['Space'] && this.onGround) {
             this.velocity.y = this.jumpForce;
             this.onGround = false;
         }
@@ -1290,7 +1311,21 @@ class Player {
         }
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, attacker = null) {
+        // 仙人掌反甲符：50%概率反弹3伤害
+        if (attacker && this.survival._talismans) {
+            for (const t of this.survival._talismans) {
+                if (t.def.thorn_chance && t.def.thorn_damage) {
+                    if (Math.random() < t.def.thorn_chance) {
+                        const charge = t.item ? (t.item.charge || 0) : 0;
+                        const thornDmg = t.def.thorn_damage + charge;
+                        attacker.takeDamage(thornDmg);
+                        if (window.game) window.game.onMessage(`仙人掌反甲符反弹 ${thornDmg} 伤害！`);
+                        if (window.game && window.game.enemies) window.game.enemies._updateHealthBar(attacker);
+                    }
+                }
+            }
+        }
         this.survival.takeDamage(amount);
     }
 }

@@ -382,6 +382,11 @@ kbd {
     font-size: 0.75em; font-weight: bold;
     text-shadow: 0 0 3px rgba(0,0,0,0.9);
 }
+.slot-dur {
+    position: absolute; left: 2px; right: 2px; bottom: 0px;
+    height: 4px; background: linear-gradient(90deg, #f66, #f00);
+    border-radius: 2px; display: none;
+}
 
 /* 交互提示 */
 #interactHint {

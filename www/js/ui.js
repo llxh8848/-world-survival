@@ -301,17 +301,33 @@ class UI {
         document.getElementById('timeDisplay').textContent = this.world.getTimeString();
         document.getElementById('dayIcon').textContent = this.world.isNight ? '🌙' : '☀️';
 
-        // 快捷栏（槽位0-4）
+        // 快捷栏（槽位0-8）
         document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
             const item = this.inventory.items[i];
             const iconEl = slot.querySelector('.slot-icon');
             const countEl = slot.querySelector('.slot-count');
+            let durEl = slot.querySelector('.slot-dur');
+            if (!durEl) {
+                durEl = document.createElement('div');
+                durEl.className = 'slot-dur';
+                slot.appendChild(durEl);
+            }
             if (item) {
                 iconEl.innerHTML = itemIconSVG(item.id);
                 countEl.textContent = item.amount > 1 ? item.amount : '';
+                const def = ITEMS[item.id] || {};
+                if (def.maxUses) {
+                    const uses = item.uses || 0;
+                    const pct = Math.max(0, Math.min(100, 100 * (def.maxUses - uses) / def.maxUses));
+                    durEl.style.display = 'block';
+                    durEl.style.width = pct + '%';
+                } else {
+                    durEl.style.display = 'none';
+                }
             } else {
                 iconEl.innerHTML = ''; 
                 countEl.textContent = '';
+                if (durEl) durEl.style.display = 'none';
             }
             slot.classList.toggle('active', i === this.inventory.selectedSlot);
         });
@@ -591,14 +607,20 @@ class UI {
             this.activeRareWoodPile = null;
             document.getElementById('rareWoodPileUI').style.display = 'none';
             this.player.lockMouse();
-            // 召唤树精boss
+            // 召唤树精boss（在金维度为金树精）
             if (window.game && window.game.enemies) {
-                window.game.enemies._spawnTreeSpirit(summonX, summonY, summonZ);
-                // 同步树精召唤到多人游戏
-                if (window.game.multiplayer && window.game.multiplayer.connected) {
-                    window.game.multiplayer.sendBossSpawn('tree_spirit', summonX, summonY, summonZ);
-                    // 同步稀有木堆移除
-                    window.game.multiplayer.sendBuildingRemoved(pos.x, pos.y, pos.z);
+                if (this.world.worldType === 'gold' && window.game.enemies._spawnGoldTreeSpirit) {
+                    window.game.enemies._spawnGoldTreeSpirit(summonX, summonY, summonZ);
+                    if (window.game.multiplayer && window.game.multiplayer.connected) {
+                        window.game.multiplayer.sendBossSpawn('gold_tree_spirit', summonX, summonY, summonZ);
+                        window.game.multiplayer.sendBuildingRemoved(pos.x, pos.y, pos.z);
+                    }
+                } else {
+                    window.game.enemies._spawnTreeSpirit(summonX, summonY, summonZ);
+                    if (window.game.multiplayer && window.game.multiplayer.connected) {
+                        window.game.multiplayer.sendBossSpawn('tree_spirit', summonX, summonY, summonZ);
+                        window.game.multiplayer.sendBuildingRemoved(pos.x, pos.y, pos.z);
+                    }
                 }
             }
         }

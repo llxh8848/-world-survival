@@ -2,8 +2,8 @@
 
 class Inventory {
     constructor() {
-        this.hotbarSize = 5;
-        this.backpackSize = 20;
+        this.hotbarSize = 9;
+        this.backpackSize = 16;
         this.size = this.hotbarSize + this.backpackSize; // 25 total
         this.items = new Array(this.size).fill(null); // {id, amount}
         this.selectedSlot = 0;

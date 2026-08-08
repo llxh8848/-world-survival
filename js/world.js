@@ -106,6 +106,14 @@ class World {
         return this._riverNoise(x, z) < 0.15;
     }
 
+    // 群系判定：基于区块坐标，23.5%概率为沙漠群系
+    isDesertBiome(cx, cz) {
+        if (this.worldType !== 'normal') return false;
+        const seed = (cx * 73856093) ^ (cz * 19349663);
+        const rng = this._seededRandom(seed);
+        return rng() < 0.235;
+    }
+
     getHeight(x, z) {
         if (this.worldType === 'stone') {
             return this._noise(x, z);
@@ -139,6 +147,7 @@ class World {
         const geo = new THREE.PlaneGeometry(size, size, segs, segs);
         geo.rotateX(-Math.PI / 2);
 
+        const isDesert = this.isDesertBiome(cx, cz);
         const pos = geo.attributes.position;
         const colors = [];
         let hasRiver = false;
@@ -150,7 +159,27 @@ class World {
             let r, g, b;
             const river = this._riverNoise(wx, wz);
             const t = Math.max(0, Math.min(1, (h + 1) / 3));
-            if (river < 0.15) {
+            if (isDesert && this.worldType === 'normal') {
+                // 沙漠群系：沙黄色调
+                if (river < 0.15) {
+                    // 沙漠中的河岸：深沙色
+                    r = 0.82; g = 0.72; b = 0.48;
+                } else if (h < -0.5) {
+                    r = 0.76; g = 0.66; b = 0.42;
+                } else if (h < 0.5) {
+                    r = 0.86 + t * 0.04;
+                    g = 0.76 + t * 0.04;
+                    b = 0.52 + t * 0.03;
+                } else if (h < 1.5) {
+                    r = 0.88 + t * 0.03;
+                    g = 0.78 + t * 0.03;
+                    b = 0.54 + t * 0.02;
+                } else {
+                    r = 0.90 + t * 0.02;
+                    g = 0.80 + t * 0.02;
+                    b = 0.56 + t * 0.02;
+                }
+            } else if (river < 0.15) {
                 // 河岸沙地
                 r = 0.76; g = 0.70; b = 0.50;
             } else if (h < -0.5) {
@@ -271,14 +300,28 @@ class World {
             return;
         }
 
-        // 树木：每个区块2-4棵（不在河流及河岸生成）
-        const treeCount = 2 + Math.floor(rng() * 3);
-        for (let i = 0; i < treeCount; i++) {
-            const x = offsetX + (rng() - 0.5) * (size - 2);
-            const z = offsetZ + (rng() - 0.5) * (size - 2);
-            const y = this.getHeight(x, z);
-            if (y < 0) continue; // 河流区域不生成树
-            this._spawnTree(new THREE.Vector3(x, y, z));
+        // 沙漠群系：生成仙人掌代替树木
+        const isDesert = this.isDesertBiome(cx, cz);
+        if (isDesert) {
+            // 仙人掌：每个区块2-4个（不在河流生成）
+            const cactusCount = 2 + Math.floor(rng() * 3);
+            for (let i = 0; i < cactusCount; i++) {
+                const x = offsetX + (rng() - 0.5) * (size - 2);
+                const z = offsetZ + (rng() - 0.5) * (size - 2);
+                const y = this.getHeight(x, z);
+                if (y < 0) continue;
+                this._spawnCactus(new THREE.Vector3(x, y, z));
+            }
+        } else {
+            // 树木：每个区块2-4棵（不在河流及河岸生成）
+            const treeCount = 2 + Math.floor(rng() * 3);
+            for (let i = 0; i < treeCount; i++) {
+                const x = offsetX + (rng() - 0.5) * (size - 2);
+                const z = offsetZ + (rng() - 0.5) * (size - 2);
+                const y = this.getHeight(x, z);
+                if (y < 0) continue; // 河流区域不生成树
+                this._spawnTree(new THREE.Vector3(x, y, z));
+            }
         }
 
         // 浆果丛：每个区块0-2个（不在河流及河岸生成）
@@ -763,6 +806,80 @@ class World {
         });
     }
 
+    _spawnCactus(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 主体 - 绿色柱状，3段
+        const cactusMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.7, flatShading: false });
+        // 主干
+        const trunkGeo = new THREE.CylinderGeometry(0.35, 0.4, 2.5, 12, 4);
+        const trunk = new THREE.Mesh(trunkGeo, cactusMat);
+        trunk.position.y = 1.25;
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        group.add(trunk);
+        // 棱线
+        for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2;
+            const ridgeGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.5, 4);
+            const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x3a6a2a, roughness: 0.8 });
+            const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
+            ridge.position.set(Math.cos(a) * 0.38, 1.25, Math.sin(a) * 0.38);
+            group.add(ridge);
+        }
+        // 左臂
+        const armLGeo = new THREE.CylinderGeometry(0.22, 0.25, 1.2, 10, 3);
+        const armL = new THREE.Mesh(armLGeo, cactusMat);
+        armL.position.set(-0.45, 1.6, 0);
+        armL.rotation.z = Math.PI / 3;
+        armL.castShadow = true;
+        group.add(armL);
+        // 左臂上段
+        const armL2Geo = new THREE.CylinderGeometry(0.2, 0.22, 0.8, 10, 3);
+        const armL2 = new THREE.Mesh(armL2Geo, cactusMat);
+        armL2.position.set(-0.85, 2.2, 0);
+        armL2.castShadow = true;
+        group.add(armL2);
+        // 右臂
+        const armRGeo = new THREE.CylinderGeometry(0.22, 0.25, 1.0, 10, 3);
+        const armR = new THREE.Mesh(armRGeo, cactusMat);
+        armR.position.set(0.5, 1.3, 0);
+        armR.rotation.z = -Math.PI / 3;
+        armR.castShadow = true;
+        group.add(armR);
+        // 右臂上段
+        const armR2Geo = new THREE.CylinderGeometry(0.2, 0.22, 0.6, 10, 3);
+        const armR2 = new THREE.Mesh(armR2Geo, cactusMat);
+        armR2.position.set(0.85, 1.7, 0);
+        armR2.castShadow = true;
+        group.add(armR2);
+        // 顶部小花（黄色）
+        const flowerGeo = new THREE.SphereGeometry(0.12, 10, 8);
+        const flowerMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+        const flower = new THREE.Mesh(flowerGeo, flowerMat);
+        flower.position.set(0, 2.55, 0);
+        group.add(flower);
+        // 刺 - 小圆锥
+        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xddddaa, roughness: 0.9 });
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const spikeGeo = new THREE.ConeGeometry(0.03, 0.12, 4);
+            const spike = new THREE.Mesh(spikeGeo, spikeMat);
+            spike.position.set(Math.cos(a) * 0.4, 0.8 + Math.random() * 1.2, Math.sin(a) * 0.4);
+            spike.rotation.y = a;
+            spike.rotation.x = Math.PI / 2;
+            group.add(spike);
+        }
+
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'cactus', health: 8, maxHealth: 8,
+            drops: { cactus: 2 }, depleted: false, respawnTimer: 0,
+            respawnTime: 45, group: 'cactus', baseY: pos.y,
+        });
+    }
+
     _spawnKelp(pos) {
         const group = new THREE.Group();
         group.position.copy(pos);
@@ -1177,7 +1294,7 @@ class World {
             resource.mesh.visible = false;
             return { ...resource.drops };
         }
-        if ((resource.type === 'berry' || resource.type === 'kelp') && !resource.depleted) {
+        if ((resource.type === 'berry' || resource.type === 'kelp' || resource.type === 'cactus') && !resource.depleted) {
             resource.depleted = true;
             resource.respawnTimer = resource.respawnTime;
             resource.mesh.visible = false;
