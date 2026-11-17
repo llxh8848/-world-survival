@@ -10,6 +10,9 @@ Desktop.ini
 .vscode/
 .idea/
 
+# 密钥
+.env
+
 # 临时
 *.tmp
 *.log

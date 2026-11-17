@@ -1,0 +1,107 @@
+{
+  "room_arcade": {
+    "worldBuildings": {
+      "normal": [],
+      "stone": [],
+      "gold": [],
+      "cave": []
+    },
+    "caveEntrances": []
+  },
+  "room_official": {
+    "worldBuildings": {
+      "normal": [
+        {
+          "type": "knowledge_bookshelf",
+          "x": -226,
+          "y": 1.57,
+          "z": 12,
+          "ry": 0,
+          "minerTimer": 0,
+          "minerStorage": [],
+          "minerTools": [
+            null,
+            null,
+            null
+          ],
+          "chestStorage": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "altarStorage": [
+            null
+          ],
+          "monumentName": null,
+          "mysteryBoxStorage": [
+            null,
+            null
+          ],
+          "goldAltarStorage": [
+            null,
+            null
+          ],
+          "forgeStorage": [
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "type": "portal",
+          "x": -226,
+          "y": 1.63,
+          "z": 8,
+          "ry": 0,
+          "minerTimer": 0,
+          "minerStorage": [],
+          "minerTools": [
+            null,
+            null,
+            null
+          ],
+          "chestStorage": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "altarStorage": [
+            null
+          ],
+          "monumentName": null,
+          "mysteryBoxStorage": [
+            null,
+            null
+          ],
+          "goldAltarStorage": [
+            null,
+            null
+          ],
+          "forgeStorage": [
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "stone": [],
+      "gold": [],
+      "cave": []
+    },
+    "caveEntrances": []
+  }
+}

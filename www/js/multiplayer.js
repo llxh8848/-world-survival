@@ -2,9 +2,31 @@
 
 const OFFICIAL_ROOMS = [
     { id: 'room_official', name: '官方房间', desc: '玩家唯一可以联机玩的地方' },
+    { id: 'room_arcade', name: '娱乐场', desc: '小游戏大厅，非原版生存模式' },
 ];
 
-const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+// 本地broker优先：使用当前页面host的/mqtt路径
+function _getLocalBroker() {
+    const loc = window.location;
+    const protocol = loc.protocol === 'https:' ? 'wss://' : 'ws://';
+    return protocol + loc.host + '/mqtt';
+}
+
+const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const MQTT_BROKERS = isLocalHost ? [
+    _getLocalBroker(),
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://public.mqtthq.com:8883/mqtt',
+] : [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://public.mqtthq.com:8883/mqtt',
+];
+let MQTT_BROKER = MQTT_BROKERS[0];
+let _brokerIdx = 0;
 const MQTT_PREFIX = 'ws_mp_';
 
 // 共享几何体和材质，所有玩家模型复用
@@ -76,38 +98,66 @@ class MultiplayerSystem {
 
     connect(roomId) {
         this.roomId = roomId;
-        this.username = this.game.username;
+        this.username = this.game.characterName || this.game.username;
+        // 清理可能存在的自己旧分身
+        this._removePlayer(this.username);
         this.roomTopic = MQTT_PREFIX + roomId;
         this.myTopic = this.roomTopic + '/' + this.username;
         this._reconnectAttempts = 0;
+        _brokerIdx = 0;
+        MQTT_BROKER = MQTT_BROKERS[0];
+        this._tryConnect();
+    }
+
+    _tryConnect() {
+        if (this.client) {
+            try { this.client.end(true); } catch(e) {}
+            this.client = null;
+        }
 
         try {
             this.client = mqtt.connect(MQTT_BROKER, {
                 clientId: 'ws_' + this.username + '_' + Math.random().toString(36).substr(2, 6),
                 clean: true,
-                connectTimeout: 8000,
+                connectTimeout: 6000,
                 keepalive: 20,
-                reconnectPeriod: 2000,
+                reconnectPeriod: 0,
+                will: {
+                    topic: this.myTopic,
+                    payload: JSON.stringify({ t: 'l', u: this.username }),
+                    qos: 0,
+                    retain: false,
+                },
             });
         } catch (e) {
             console.error('MQTT connect failed:', e);
-            this.game.onMessage('连接服务器失败');
-            return false;
+            this._tryNextBroker();
+            return;
         }
 
+        this._connectTimeout = setTimeout(() => {
+            if (!this.connected) {
+                console.warn('MQTT timeout, trying next broker');
+                this._tryNextBroker();
+            }
+        }, 7000);
+
         this.client.on('connect', () => {
+            if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
             this.connected = true;
             this._reconnectAttempts = 0;
             this.client.subscribe(this.roomTopic + '/+', { qos: 0 });
             this._sendRaw('j');
-            // 立即强制发送位置，让房间里已有玩家能看到自己
             setTimeout(() => this._sendPositionForce(), 200);
-            // 先从服务器加载建筑状态（离线持久化）
             this._loadBuildingsFromServer().then(() => {
-                // 再请求在线玩家同步最新状态
                 setTimeout(() => this.requestBuildSync(), 500);
             });
             this.game.onMessage('已连接到房间: ' + this.getRoomName());
+            // 独立心跳：每10秒发送一次，不受标签页切换/requestAnimationFrame暂停影响
+            if (this._heartbeatInterval) clearInterval(this._heartbeatInterval);
+            this._heartbeatInterval = setInterval(() => {
+                if (this.connected) this._sendPositionForce();
+            }, 10000);
         });
 
         this.client.on('message', (topic, payload) => {
@@ -122,9 +172,11 @@ class MultiplayerSystem {
         });
 
         this.client.on('close', () => {
+            if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
             if (this.connected) {
                 this.connected = false;
                 this.game.onMessage('连接断开，尝试重连...');
+                this._tryConnect();
             }
         });
 
@@ -133,12 +185,32 @@ class MultiplayerSystem {
             if (this._reconnectAttempts <= this._maxReconnectAttempts) {
                 this.game.onMessage('正在重连... (' + this._reconnectAttempts + '/' + this._maxReconnectAttempts + ')');
             } else {
+
                 this.game.onMessage('重连失败，请检查网络');
                 this.client.end();
             }
         });
 
         return true;
+    }
+
+    _tryNextBroker() {
+        if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
+        if (this.client) {
+            try { this.client.end(true); } catch(e) {}
+            this.client = null;
+        }
+        _brokerIdx++;
+        if (_brokerIdx >= MQTT_BROKERS.length) {
+            _brokerIdx = 0;
+            this.game.onMessage('所有服务器均无法连接，请稍后重试');
+            setTimeout(() => this._tryConnect(), 5000);
+            return;
+        }
+        MQTT_BROKER = MQTT_BROKERS[_brokerIdx];
+        console.log('Trying broker:', MQTT_BROKER);
+        this.game.onMessage('切换服务器中...');
+        this._tryConnect();
     }
 
     getRoomName() {
@@ -240,11 +312,11 @@ class MultiplayerSystem {
                         this.game.onMessage(username + ' 给了你 ' + qty + '个 ' + (info ? info.name : rest[1]));
                     }
                     break;
-                case 'b': // build - 放置建筑（含可选状态）
-                    this._onRemoteBuild(username, rest[0], rest[1], rest[2], rest[3], rest[4], rest[5]);
+                case 'b': // build - 放置建筑（含可选状态；rest[6] 为维度）
+                    this._onRemoteBuild(username, rest[0], rest[1], rest[2], rest[3], rest[4], rest[5], rest[6]);
                     break;
-                case 'br': // build remove - 移除建筑
-                    this._onRemoteBuildRemove(rest[0], rest[1], rest[2]);
+                case 'br': // build remove - 移除建筑（rest[3] 为维度）
+                    this._onRemoteBuildRemove(rest[0], rest[1], rest[2], rest[3]);
                     break;
                 case 't': // time sync
                     this._onTimeSync(rest[0], rest[1]);
@@ -270,7 +342,7 @@ class MultiplayerSystem {
         }
 
         // 旧格式兼容
-        if (msg.username === this.username) return;
+        if (msg.u === this.username) return;
         switch (msg.t || msg.type) {
             case 'j': case 'join':
                 this.game.onMessage(msg.u + ' 加入了房间');
@@ -288,6 +360,7 @@ class MultiplayerSystem {
     }
 
     _createPlayerMesh(username) {
+        if (username === this.username) return; // 不创建自己的分身
         if (this.players[username]) return;
 
         const { geo, mats } = _getSharedAssets();
@@ -651,18 +724,7 @@ class MultiplayerSystem {
             }
         }
 
-        // 每5秒清理超时玩家
-        this.cleanupTimer += dt;
-        if (this.cleanupTimer >= 5) {
-            this.cleanupTimer = 0;
-            const now = Date.now();
-            for (const username of Object.keys(this.players)) {
-                if (now - this.players[username].lastUpdate > 15000) {
-                    this._removePlayer(username);
-                    this.game.onMessage(username + ' 已超时断开');
-                }
-            }
-        }
+        // 不再清理超时玩家（玩家永不超时）
 
         // 心跳：每10秒强制发送一次位置，让其他玩家知道我们还在线
         this.heartbeatTimer += dt;
@@ -722,23 +784,25 @@ class MultiplayerSystem {
         this.client.publish(this.myTopic, JSON.stringify(['g', this.username, targetName, itemId, count]), { qos: 0 });
     }
 
-    // 发送建筑放置
+    // 发送建筑放置（附带当前维度，接收方若不在同维度则忽略）
     sendBuilding(itemId, x, y, z, yaw) {
         if (!this.connected || !this.client) return;
+        const dim = this.game.world.worldType || 'normal';
         this.client.publish(this.myTopic, JSON.stringify([
             'b', this.username, itemId,
             +x.toFixed(2), +y.toFixed(2), +z.toFixed(2),
-            +yaw.toFixed(3),
+            +yaw.toFixed(3), null, dim
         ]), { qos: 0 });
         // 同时保存到服务器
         this._saveBuildingsToServer();
     }
 
-    // 发送建筑移除（通知其他玩家）
+    // 发送建筑移除（通知其他玩家，附带维度）
     sendBuildingRemoved(x, y, z) {
         if (!this.connected || !this.client) return;
+        const dim = this.game.world.worldType || 'normal';
         this.client.publish(this.myTopic, JSON.stringify([
-            'br', this.username, +x.toFixed(2), +y.toFixed(2), +z.toFixed(2),
+            'br', this.username, +x.toFixed(2), +y.toFixed(2), +z.toFixed(2), dim
         ]), { qos: 0 });
         // 同时保存到服务器
         this._saveBuildingsToServer();
@@ -785,6 +849,15 @@ class MultiplayerSystem {
             } else if (bossType === 'gold_zombie') {
                 window.game.enemies._spawnGoldZombie(pos.x, pos.y, pos.z);
                 this.game.onMessage(username + ' 召唤了金僵尸!');
+            } else if (bossType === 'element_king') {
+                window.game.enemies._spawnElementKing(pos.x, pos.y, pos.z);
+                this.game.onMessage(username + ' 召唤了元素王!');
+            } else if (bossType === 'camel') {
+                window.game.enemies._spawnCamel(pos.x, pos.y, pos.z);
+                this.game.onMessage(username + ' 召唤了骆驼!');
+            } else if (bossType === 'tamed_camel') {
+                window.game.enemies._spawnTamedCamel(pos.x, pos.y, pos.z);
+                this.game.onMessage(username + ' 召唤了已驯服的骆驼!');
             }
         }
     }
@@ -802,13 +875,21 @@ class MultiplayerSystem {
         }
     }
 
-    // 接收到远程建筑放置（含可选状态数据）
-    _onRemoteBuild(username, itemId, x, y, z, yaw, state) {
+    // 收到远程建筑（可选状态；dim 为维度，若与当前不符则忽略）
+    _onRemoteBuild(username, itemId, x, y, z, yaw, state, dim) {
+        const curDim = this.game.world.worldType || 'normal';
+        if (dim && dim !== curDim) return; // 跨维度建筑，忽略
+        // 去重：若已存在接近位置的同类建筑则跳过
+        const buildings = this.game.world.buildings;
+        const exists = buildings.some(b => b.mesh &&
+            b.type === itemId &&
+            Math.abs(b.mesh.position.x - x) < 0.2 &&
+            Math.abs(b.mesh.position.z - z) < 0.2);
+        if (exists) return;
         const pos = new THREE.Vector3(x, y, z);
         const ok = this.game.world.placeBuilding(itemId, pos, yaw || 0);
         if (ok && state) {
-            // 找到刚放置的建筑（最后一个）并恢复状态
-            const buildings = this.game.world.buildings;
+            // 找到刚放置的建筑，恢复状态
             const b = buildings[buildings.length - 1];
             if (b && b.type === itemId) {
                 if (state.ms) b.minerStorage = state.ms;
@@ -819,14 +900,10 @@ class MultiplayerSystem {
         }
     }
 
-    // 请求同步现有建筑（加入房间时）
-    requestBuildSync() {
-        if (!this.connected || !this.client) return;
-        this.client.publish(this.myTopic, JSON.stringify(['bs', this.username]), { qos: 0 });
-    }
-
-    // 接收到远程建筑移除
-    _onRemoteBuildRemove(x, y, z) {
+    // 收到远程建筑移除（dim 可选，若与当前不符则忽略）
+    _onRemoteBuildRemove(x, y, z, dim) {
+        const curDim = this.game.world.worldType || 'normal';
+        if (dim && dim !== curDim) return;
         const buildings = this.game.world.buildings;
         for (let i = buildings.length - 1; i >= 0; i--) {
             const b = buildings[i];
@@ -840,9 +917,10 @@ class MultiplayerSystem {
         }
     }
 
-    // 发送所有已有建筑给新玩家（含内部状态）
+    // 发送所有已有建筑给新玩家（含内部状态，仅发送当前维度）
     _sendAllBuildings() {
         if (!this.connected || !this.client) return;
+        const dim = this.game.world.worldType || 'normal';
         const buildings = this.game.world.buildings;
         for (const b of buildings) {
             if (b.mesh) {
@@ -861,18 +939,17 @@ class MultiplayerSystem {
                     'b', this.username, b.type,
                     +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2),
                     +b.mesh.rotation.y.toFixed(3),
-                    state,
+                    state, dim
                 ]), { qos: 0 });
             }
         }
     }
 
-    // 序列化所有建筑为JSON（用于服务器持久化）
-    _serializeAllBuildings() {
-        const buildings = this.game.world.buildings;
+    // 序列化单个建筑列表（完整字段，用于服务器按维度持久化）
+    _serializeBuildings(list) {
         const result = [];
-        for (const b of buildings) {
-            if (b.mesh) {
+        for (const b of (list || [])) {
+            if (b && b.mesh) {
                 const p = b.mesh.position;
                 result.push({
                     type: b.type,
@@ -880,60 +957,169 @@ class MultiplayerSystem {
                     y: +p.y.toFixed(2),
                     z: +p.z.toFixed(2),
                     ry: +b.mesh.rotation.y.toFixed(3),
+                    minerTimer: b.minerTimer || 0,
                     minerStorage: b.minerStorage || [],
                     minerTools: (b.minerTools || []).map(t => t ? { id: t.id, amount: t.amount || 1 } : null),
                     chestStorage: b.chestStorage || [],
                     altarStorage: b.altarStorage || [],
+                    monumentName: b.monumentName || null,
+                    mysteryBoxStorage: b.mysteryBoxStorage || null,
+                    goldAltarStorage: b.goldAltarStorage || null,
+                    forgeStorage: b.forgeStorage || null,
                 });
             }
         }
         return result;
     }
 
-    // 保存建筑状态到服务器
+    // 序列化所有建筑为JSON（用于服务器持久化） - 保留旧名，内部用当前世界
+    _serializeAllBuildings() {
+        return this._serializeBuildings(this.game.world.buildings);
+    }
+
+    // 采集各维度建筑快照（用于POST到服务器持久化）
+    _getAllWorldBuildingsSnapshot() {
+        const w = this.game.world;
+        const cur = w.worldType || 'normal';
+        const normal = (cur === 'normal') ? w.buildings : (w._normalBuildings || []);
+        const stone = (cur === 'stone') ? w.buildings : (w._stoneBuildings || []);
+        const gold  = (cur === 'gold')  ? w.buildings : (w._goldBuildings || []);
+        const cave  = (cur === 'cave')  ? w.buildings : (w._caveBuildings || []);
+        return {
+            normal: this._serializeBuildings(normal),
+            stone: this._serializeBuildings(stone),
+            gold: this._serializeBuildings(gold),
+            cave: this._serializeBuildings(cave),
+        };
+    }
+
+    // 获取石维度矿洞入口快照（当前或已暂存）
+    _getCaveEntrancesSnapshot() {
+        const w = this.game.world;
+        if (w.worldType === 'stone') {
+            return w.getCaveEntrances ? w.getCaveEntrances() : [];
+        }
+        return (w._stoneCaveEntrances || []);
+    }
+
+    // 保存建筑状态到服务器（按维度存储，任何玩家上线都能加载）
     async _saveBuildingsToServer() {
         if (!this.roomId) return;
         try {
-            const buildings = this._serializeAllBuildings();
+            const wb = this._getAllWorldBuildingsSnapshot();
+            const caveEntrances = this._getCaveEntrancesSnapshot();
             await fetch('/api/buildings/' + this.roomId, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ buildings }),
+                body: JSON.stringify({ worldBuildings: wb, caveEntrances }),
             });
         } catch (e) {
             console.error('Save buildings to server failed:', e);
         }
     }
 
-    // 从服务器加载建筑状态
+    // 从服务器加载建筑（按维度）：当前维度直接放入场景，其他维度储存到 _xxxBuildings 且从场景移除
     async _loadBuildingsFromServer() {
         if (!this.roomId) return;
         try {
             const res = await fetch('/api/buildings/' + this.roomId);
             if (!res.ok) return;
             const data = await res.json();
-            if (!data.buildings || data.buildings.length === 0) return;
-            // 加载建筑（避免重复放置）
-            for (const b of data.buildings) {
-                // 检查是否已存在相同位置的建筑
-                const exists = this.game.world.buildings.some(existing =>
-                    existing.mesh &&
-                    Math.abs(existing.mesh.position.x - b.x) < 0.1 &&
-                    Math.abs(existing.mesh.position.z - b.z) < 0.1
-                );
-                if (exists) continue;
+            let wb = data && data.worldBuildings;
+            if (!wb || typeof wb !== 'object' || Array.isArray(wb)) {
+                // 兼容旧数据
+                const legacy = (data && Array.isArray(data.buildings)) ? data.buildings : (Array.isArray(wb) ? wb : []);
+                wb = { normal: legacy, stone: [], gold: [], cave: [] };
+            }
+            const caveEnt = (data && Array.isArray(data.caveEntrances)) ? data.caveEntrances : [];
+            const curType = this.game.world.worldType || 'normal';
+            // 恢复或暂存石维度矿洞入口
+            if (curType === 'stone' && this.game.world.restoreCaveEntrances) {
+                this.game.world.restoreCaveEntrances(caveEnt);
+            } else {
+                this.game.world._stoneCaveEntrances = caveEnt;
+            }
+            // 新房间首次加载到石维度时，如果没有任何入口则强制生成一个并保存
+            if (curType === 'stone') {
+                const has = this.game.world.resources && this.game.world.resources.some(r => r.type === 'cave_entrance');
+                if (!has) {
+                    const w = this.game.world;
+                    const ex = 18 + (Math.random() - 0.5) * 12;
+                    const ez = 18 + (Math.random() - 0.5) * 12;
+                    const ey = w.getHeight(ex, ez);
+                    w._spawnCaveEntrance(new THREE.Vector3(ex, ey, ez));
+                    const cx = Math.floor(ex / w.chunkSize);
+                    const cz = Math.floor(ez / w.chunkSize);
+                    w._caveEntranceChunks.add(`${cx},${cz}`);
+                    if (this.connected && this._saveBuildingsToServer) {
+                        setTimeout(() => { try { this._saveBuildingsToServer(); } catch (e) {} }, 0);
+                    }
+                    if (w.getCaveEntrances) w._stoneCaveEntrances = w.getCaveEntrances();
+                }
+            }
+
+            // 先清理当前场景中的建筑（避免重复）
+            for (const b of this.game.world.buildings) {
+                this.game.scene.remove(b.mesh);
+            }
+            this.game.world.buildings = [];
+            this.game.world.campfires = [];
+
+            // 加载当前维度的建筑
+            const curList = wb[curType] || [];
+            for (const b of curList) {
                 const pos = new THREE.Vector3(b.x, b.y, b.z);
                 const ok = this.game.world.placeBuilding(b.type, pos, b.ry || 0);
                 if (ok) {
                     const placed = this.game.world.buildings[this.game.world.buildings.length - 1];
+                    if (b.minerTimer) placed.minerTimer = b.minerTimer;
                     if (b.minerStorage) placed.minerStorage = b.minerStorage;
                     if (b.minerTools) placed.minerTools = b.minerTools;
                     if (b.chestStorage) placed.chestStorage = b.chestStorage;
                     if (b.altarStorage) placed.altarStorage = b.altarStorage;
+                    if (b.monumentName) placed.monumentName = b.monumentName;
+                    if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
+                    if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                    if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
                 }
             }
+
+            // 加载并储存其他维度的建筑（不加到场景）
+            const stashDim = (dim, key) => {
+                const list = wb[dim] || [];
+                if (!list.length) { this.game.world[key] = []; return; }
+                const before = this.game.world.buildings.length;
+                const cfBefore = this.game.world.campfires.length;
+                for (const b of list) {
+                    const pos = new THREE.Vector3(b.x, b.y, b.z);
+                    const ok = this.game.world.placeBuilding(b.type, pos, b.ry || 0);
+                    if (ok) {
+                        const placed = this.game.world.buildings[this.game.world.buildings.length - 1];
+                        if (b.minerTimer) placed.minerTimer = b.minerTimer;
+                        if (b.minerStorage) placed.minerStorage = b.minerStorage;
+                        if (b.minerTools) placed.minerTools = b.minerTools;
+                        if (b.chestStorage) placed.chestStorage = b.chestStorage;
+                        if (b.altarStorage) placed.altarStorage = b.altarStorage;
+                        if (b.monumentName) placed.monumentName = b.monumentName;
+                        if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
+                        if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                        if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
+                    }
+                }
+                const stashed = this.game.world.buildings.splice(before);
+                const stashedCf = this.game.world.campfires.splice(cfBefore);
+                for (const sb of stashed) this.game.scene.remove(sb.mesh);
+                this.game.world[key] = stashed;
+                // 相应营火也可以存，但目前主要靠buildings存储位置，若需可扩展
+            };
+            if (curType !== 'normal') stashDim('normal', '_normalBuildings');
+            if (curType !== 'stone')  stashDim('stone',  '_stoneBuildings');
+            if (curType !== 'gold')   stashDim('gold',   '_goldBuildings');
+            if (curType !== 'cave')   stashDim('cave',   '_caveBuildings');
+
             this._buildingsLoaded = true;
-            if (window.game) window.game.onMessage('从服务器加载了' + data.buildings.length + '个建筑');
+            const total = (wb.normal||[]).length + (wb.stone||[]).length + (wb.gold||[]).length + (wb.cave||[]).length;
+            if (window.game) window.game.onMessage('从服务器加载了' + total + '个建筑');
         } catch (e) {
             console.error('Load buildings from server failed:', e);
         }
@@ -977,12 +1163,13 @@ class MultiplayerSystem {
     }
 
     disconnect() {
+        if (this._heartbeatInterval) { clearInterval(this._heartbeatInterval); this._heartbeatInterval = null; }
+        this.connected = false;
         if (this.client) {
             this._sendRaw('l');
             this.client.end(true); // force close
             this.client = null;
         }
-        this.connected = false;
         for (const username of Object.keys(this.players)) {
             this._removePlayer(username);
         }

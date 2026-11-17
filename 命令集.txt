@@ -1,4 +1,4 @@
-项目目录：cd D:\xyxnyz
+项目目录：cd F:\xy\xyxnyz
 仓库地址：https://github.com/llxh8848/-world-survival
 已推送 2 个提交：
 1bab809 — 初始提交

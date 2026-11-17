@@ -20,6 +20,17 @@ class World {
         this._stoneBuildings = null;
         this._stoneCampfires = null;
 
+        // 娱乐场大厅模式
+        this.lobbyMode = false;
+        this.lobbyBounds = null;
+
+        // 矿洞系统
+        this._caveEntranceChunks = new Set(); // 已生成矿洞入口的区块key
+        this._caveReturnPosition = null; // 进入洞穴前的位置（石维度地表）
+        this._caveBuildings = null;
+        this._caveCampfires = null;
+        this._stoneCaveEntrances = null; // 持久化的石维度矿洞入口列表（用于服务器重启后恢复）
+
         // 区块系统
         this.chunkSize = 80;
         this.renderRadius = 2; // 渲染半径（区块数）
@@ -31,11 +42,30 @@ class World {
         this._generateInitial();
     }
 
+    _isRetro() {
+        return window.game && window.game.retroMaterial;
+    }
+
+    _applyRetroToMesh(mesh) {
+        if (!this._isRetro() || !mesh) return;
+        mesh.traverse(c => {
+            if (c.isMesh && c.material) {
+                const mats = Array.isArray(c.material) ? c.material : [c.material];
+                for (const m of mats) {
+                    if (m.flatShading !== undefined) m.flatShading = true;
+                    m.needsUpdate = true;
+                }
+                if (c.castShadow !== undefined) c.castShadow = false;
+                if (c.receiveShadow !== undefined) c.receiveShadow = false;
+            }
+        });
+    }
+
     _initLights() {
         // 太阳光
         this.sun = new THREE.DirectionalLight(0xfff5e8, 3.2);
         this.sun.castShadow = true;
-        this.sun.shadow.mapSize.set(4096, 4096);
+        this.sun.shadow.mapSize.set(2048, 2048);
         this.sun.shadow.camera.left = -90;
         this.sun.shadow.camera.right = 90;
         this.sun.shadow.camera.top = 90;
@@ -106,20 +136,67 @@ class World {
         return this._riverNoise(x, z) < 0.15;
     }
 
-    // 群系判定：基于区块坐标，23.5%概率为沙漠群系
+    // 群系使用 15x15 区块大格子，确保同种群系至少相隔 15 个区块
+    _biomeCellSeed(rx, rz) {
+        return (rx * 73856093) ^ (rz * 19349663);
+    }
+
+    _getBiomeCellType(rx, rz) {
+        const seed = this._biomeCellSeed(rx, rz);
+        const rng = this._seededRandom(seed);
+        const v = rng();
+        if (v < 0.10) return 'desert';      // 沙漠 10%
+        if (v < 0.25) return 'ocean';       // 海洋 15%（占 5x8=40 区块）
+        return 'normal';
+    }
+
+    // 沙漠群系：每个大格子固定 3x4=12 区块，至少占 10 个区块
     isDesertBiome(cx, cz) {
         if (this.worldType !== 'normal') return false;
-        const seed = (cx * 73856093) ^ (cz * 19349663);
-        const rng = this._seededRandom(seed);
-        return rng() < 0.235;
+        const size = 15;
+        const rx = Math.floor(cx / size);
+        const rz = Math.floor(cz / size);
+        if (this._getBiomeCellType(rx, rz) !== 'desert') return false;
+        const lx = ((cx % size) + size) % size;
+        const lz = ((cz % size) + size) % size;
+        return lx >= 7 && lx < 10 && lz >= 7 && lz < 11;
+    }
+
+    // 海洋群系：每个大格子 5x8=40 区块；不能邻接沙漠
+    isOceanBiome(cx, cz) {
+        if (this.worldType !== 'normal') return false;
+        const size = 15;
+        const rx = Math.floor(cx / size);
+        const rz = Math.floor(cz / size);
+        if (this._getBiomeCellType(rx, rz) !== 'ocean') return false;
+        // 相邻大格子不能是沙漠
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                if (dx === 0 && dz === 0) continue;
+                if (this._getBiomeCellType(rx + dx, rz + dz) === 'desert') return false;
+            }
+        }
+        const lx = ((cx % size) + size) % size;
+        const lz = ((cz % size) + size) % size;
+        return lx >= 5 && lx < 10 && lz >= 3 && lz < 11;
     }
 
     getHeight(x, z) {
+        if (this.lobbyMode) {
+            return 0;
+        }
         if (this.worldType === 'stone') {
             return this._noise(x, z);
         }
         if (this.worldType === 'gold') {
             return this._noise(x, z);
+        }
+        if (this.worldType === 'cave') {
+            return this._getCaveHeight(x, z);
+        }
+        if (this.worldType === 'ice') {
+            // 冰刺维度：平缓冰原
+            return this._noise(x, z) * 0.5;
         }
         let h = this._noise(x, z);
         const riverVal = this._riverNoise(x, z);
@@ -128,6 +205,12 @@ class World {
         } else if (riverVal < 0.15) {
             const t = (0.15 - riverVal) / 0.07;
             h = h * (1 - t) + (-1.5) * t;
+        }
+        // 海洋群系：地面降到很深，上面全是水
+        const cx = Math.floor(x / this.chunkSize);
+        const cz = Math.floor(z / this.chunkSize);
+        if (this.isOceanBiome(cx, cz)) {
+            h = -18;
         }
         return h;
     }
@@ -148,6 +231,7 @@ class World {
         geo.rotateX(-Math.PI / 2);
 
         const isDesert = this.isDesertBiome(cx, cz);
+        const isOcean = this.isOceanBiome(cx, cz);
         const pos = geo.attributes.position;
         const colors = [];
         let hasRiver = false;
@@ -159,7 +243,10 @@ class World {
             let r, g, b;
             const river = this._riverNoise(wx, wz);
             const t = Math.max(0, Math.min(1, (h + 1) / 3));
-            if (isDesert && this.worldType === 'normal') {
+            if (isOcean && this.worldType === 'normal') {
+                // 海洋群系：深海沙底
+                r = 0.84; g = 0.80; b = 0.64;
+            } else if (isDesert && this.worldType === 'normal') {
                 // 沙漠群系：沙黄色调
                 if (river < 0.15) {
                     // 沙漠中的河岸：深沙色
@@ -199,7 +286,13 @@ class World {
             }
             // 石头世界用灰色调
             if (this.worldType === 'stone') {
-                if (h < -1.0) {
+                if (this.lobbyMode) {
+                    // 娱乐场大厅：石砖拼花地面
+                    const tx = Math.floor((wx + 10000) / 12);
+                    const tz = Math.floor((wz + 10000) / 12);
+                    const v = ((tx + tz) % 2 === 0) ? 0.55 : 0.48;
+                    r = v; g = v; b = v * 0.95;
+                } else if (h < -1.0) {
                     r = 0.15; g = 0.25; b = 0.20;
                 } else if (h < -0.3) {
                     r = 0.20; g = 0.35; b = 0.25;
@@ -213,6 +306,17 @@ class World {
                 r = 0.85 + t * 0.05;
                 g = 0.65 + t * 0.08;
                 b = 0.15 + t * 0.05;
+            }
+            // 冰刺维度：冰蓝白色调
+            if (this.worldType === 'ice') {
+                const v = 0.75 + t * 0.15;
+                r = v * 0.85; g = v * 0.92; b = Math.min(1, v * 1.05);
+            }
+            // 洞穴世界：深灰黑暗
+            if (this.worldType === 'cave') {
+                r = 0.12 + t * 0.03;
+                g = 0.12 + t * 0.03;
+                b = 0.14 + t * 0.02;
             }
             colors.push(r, g, b);
         }
@@ -229,6 +333,7 @@ class World {
         mesh.position.set(offsetX, 0, offsetZ);
         mesh.receiveShadow = true;
         mesh.castShadow = false;
+        this._applyRetroToMesh(mesh);
         this.scene.add(mesh);
 
         const key = this._chunkKey(cx, cz);
@@ -259,7 +364,22 @@ class World {
         const seed = (cx * 73856093) ^ (cz * 19349663);
         const rng = this._seededRandom(seed);
 
+        if (this.worldType === 'cave') {
+            this._spawnCaveResourcesInChunk(cx, cz);
+            return;
+        }
+
+        if (this.worldType === 'ice') {
+            this._spawnIceResourcesInChunk(cx, cz, rng, offsetX, offsetZ, size);
+            return;
+        }
+
         if (this.worldType === 'stone') {
+            // 娱乐场大厅：只生成装饰，不生成生存资源与矿洞入口
+            if (this.lobbyMode) {
+                this._spawnLobbyDecorations(cx, cz);
+                return;
+            }
             // 石头世界：生成大量石头节点
             const stoneCount = 6 + Math.floor(rng() * 7);
             for (let i = 0; i < stoneCount; i++) {
@@ -280,12 +400,36 @@ class World {
                 const ty = this.getHeight(tx, tz);
                 this._spawnStoneTemple(new THREE.Vector3(tx, ty, tz));
             }
+            // 20%概率生成矿洞入口（与已有矿洞至少隔4区块）
+            // 只有在没有任何已知入口时才让RNG生成（持久化恢复或首先生成已处理的情况跳过）
+            const hasAnyCave = this.resources.some(r => r.type === 'cave_entrance') || (this._stoneCaveEntrances && this._stoneCaveEntrances.length);
+            if (!hasAnyCave && rng() < 0.20 && !this._caveEntranceChunks.has(key)) {
+                let tooClose = false;
+                for (const existingKey of this._caveEntranceChunks) {
+                    const [ex, ez] = existingKey.split(',').map(Number);
+                    if (Math.abs(ex - cx) < 4 && Math.abs(ez - cz) < 4) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (!tooClose) {
+                    const ex = offsetX + (rng() - 0.5) * (size - 10);
+                    const ez = offsetZ + (rng() - 0.5) * (size - 10);
+                    const ey = this.getHeight(ex, ez);
+                    this._spawnCaveEntrance(new THREE.Vector3(ex, ey, ez));
+                    this._caveEntranceChunks.add(key);
+                    // 联机时立即持久化，确保其他玩家/重启后可见
+                    if (window.game && window.game.multiplayer && window.game.multiplayer.connected && window.game.multiplayer._saveBuildingsToServer) {
+                        setTimeout(() => { try { window.game.multiplayer._saveBuildingsToServer(); } catch (e) {} }, 0);
+                    }
+                }
+            }
             return;
         }
 
         if (this.worldType === 'gold') {
             // 金维度：生成金平矿点和金矿点
-            const nodeCount = 4 + Math.floor(rng() * 5);
+            const nodeCount = 2 + Math.floor(rng() * 3);
             for (let i = 0; i < nodeCount; i++) {
                 const x = offsetX + (rng() - 0.5) * (size - 2);
                 const z = offsetZ + (rng() - 0.5) * (size - 2);
@@ -298,6 +442,17 @@ class World {
                 }
             }
             return;
+        }
+
+        // 海洋群系：不生成陆地资源
+        if (this.isOceanBiome(cx, cz)) return;
+
+        // 冰刺维度入口：普通世界每个区块3%概率生成冰晶之门
+        if (rng() < 0.03) {
+            const px = offsetX + (rng() - 0.5) * (size - 6);
+            const pz = offsetZ + (rng() - 0.5) * (size - 6);
+            const py = this.getHeight(px, pz);
+            if (py >= 0) this._spawnIcePortal(new THREE.Vector3(px, py, pz));
         }
 
         // 沙漠群系：生成仙人掌代替树木
@@ -374,8 +529,8 @@ class World {
 
     updateChunks(playerPos) {
         this._playerPos = playerPos;
-        // 水面跟随玩家（石头世界和金维度隐藏水面）
-        if (this.worldType === 'stone' || this.worldType === 'gold') {
+        // 水面跟随玩家（石头世界、金维度、冰刺维度隐藏水面）
+        if (this.worldType === 'stone' || this.worldType === 'gold' || this.worldType === 'ice') {
             this.waterMesh.visible = false;
         } else {
             this.waterMesh.visible = true;
@@ -505,6 +660,7 @@ class World {
         bush2.castShadow = true;
         group.add(bush2);
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'wood', health: 10, maxHealth: 10,
@@ -559,6 +715,7 @@ class World {
             group.add(small);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'stone_node', health: 10, maxHealth: 10,
@@ -571,11 +728,11 @@ class World {
         const group = new THREE.Group();
         group.position.copy(pos);
 
-        // 主体 - 金灿灿的矿石，超高细分
-        const geo = new THREE.DodecahedronGeometry(0.9, 3);
+        // 主体 - 金灿灿的矿石
+        const geo = new THREE.DodecahedronGeometry(0.9, 1);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xffd700, roughness: 0.1, metalness: 0.98,
-            emissive: 0xffaa00, emissiveIntensity: 0.4, flatShading: false
+            color: 0xffd700, roughness: 0.3, metalness: 0.3,
+            emissive: 0xffaa00, emissiveIntensity: 0.6, flatShading: false
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.y = 0.7;
@@ -584,39 +741,28 @@ class World {
         mesh.receiveShadow = true;
         group.add(mesh);
 
-        // 金色小矿石围绕 - 6个，带发光
-        for (let i = 0; i < 6; i++) {
-            const r = 0.18 + Math.random() * 0.14;
-            const smallGeo = new THREE.DodecahedronGeometry(r, 2);
-            const smallMat = new THREE.MeshStandardMaterial({
-                color: 0xffcc00, roughness: 0.06, metalness: 1.0,
-                emissive: 0xff8800, emissiveIntensity: 0.5, flatShading: false
-            });
+        // 金色小矿石围绕 - 4个
+        const smallGeo = new THREE.DodecahedronGeometry(0.22, 0);
+        const smallMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc00, roughness: 0.06, metalness: 0.3,
+            emissive: 0xff8800, emissiveIntensity: 0.5, flatShading: false
+        });
+        for (let i = 0; i < 4; i++) {
             const small = new THREE.Mesh(smallGeo, smallMat);
-            const angle = (i / 6) * Math.PI * 2;
-            small.position.set(Math.cos(angle) * (0.75 + Math.random() * 0.25), 0.2 + Math.random() * 0.35, Math.sin(angle) * (0.75 + Math.random() * 0.25));
+            const angle = (i / 4) * Math.PI * 2;
+            small.position.set(Math.cos(angle) * 0.85, 0.2 + Math.random() * 0.35, Math.sin(angle) * 0.85);
             small.castShadow = true;
             group.add(small);
         }
 
-        // 顶部金尖晶 - 高细分
-        const spikeGeo = new THREE.OctahedronGeometry(0.32, 1);
-        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xffee44, roughness: 0.03, metalness: 1.0, emissive: 0xffaa00, emissiveIntensity: 0.7 });
-        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        // 顶部金尖晶
+        const spikeGeo = new THREE.OctahedronGeometry(0.32, 0);
+        const spike = new THREE.Mesh(spikeGeo, smallMat);
         spike.position.set(0.1, 1.35, 0);
         spike.castShadow = true;
         group.add(spike);
 
-        // 第二个小尖晶
-        const spike2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 1), spikeMat);
-        spike2.position.set(-0.25, 1.15, 0.15);
-        group.add(spike2);
-
-        // 金色光源 - 更强
-        const light = new THREE.PointLight(0xffd700, 2, 6, 2);
-        light.position.y = 0.8;
-        group.add(light);
-
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'gold_ore', health: 15, maxHealth: 15,
@@ -630,10 +776,10 @@ class World {
         group.position.copy(pos);
 
         // 主体 - 闪亮的金平矿
-        const geo = new THREE.DodecahedronGeometry(0.85, 3);
+        const geo = new THREE.DodecahedronGeometry(0.85, 1);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xffcc00, roughness: 0.05, metalness: 1.0,
-            emissive: 0xffdd00, emissiveIntensity: 0.6, flatShading: false
+            color: 0xffcc00, roughness: 0.2, metalness: 0.3,
+            emissive: 0xffdd00, emissiveIntensity: 0.8, flatShading: false
         });
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.y = 0.65;
@@ -643,33 +789,27 @@ class World {
         group.add(mesh);
 
         // 围绕的小金平石
-        for (let i = 0; i < 5; i++) {
-            const r = 0.15 + Math.random() * 0.12;
-            const smallGeo = new THREE.DodecahedronGeometry(r, 2);
-            const smallMat = new THREE.MeshStandardMaterial({
-                color: 0xffdd44, roughness: 0.04, metalness: 1.0,
-                emissive: 0xffcc00, emissiveIntensity: 0.6, flatShading: false
-            });
+        const smallGeo = new THREE.DodecahedronGeometry(0.2, 0);
+        const smallMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd44, roughness: 0.1, metalness: 0.3,
+            emissive: 0xffcc00, emissiveIntensity: 0.6, flatShading: false
+        });
+        for (let i = 0; i < 4; i++) {
             const small = new THREE.Mesh(smallGeo, smallMat);
-            const angle = (i / 5) * Math.PI * 2;
-            small.position.set(Math.cos(angle) * (0.7 + Math.random() * 0.2), 0.15 + Math.random() * 0.3, Math.sin(angle) * (0.7 + Math.random() * 0.2));
+            const angle = (i / 4) * Math.PI * 2;
+            small.position.set(Math.cos(angle) * 0.8, 0.15 + Math.random() * 0.3, Math.sin(angle) * 0.8);
             small.castShadow = true;
             group.add(small);
         }
 
         // 顶部尖晶
-        const spikeGeo = new THREE.OctahedronGeometry(0.28, 1);
-        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xffff66, roughness: 0.02, metalness: 1.0, emissive: 0xffdd00, emissiveIntensity: 0.8 });
-        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        const spikeGeo = new THREE.OctahedronGeometry(0.28, 0);
+        const spike = new THREE.Mesh(spikeGeo, smallMat);
         spike.position.set(0, 1.25, 0);
         spike.castShadow = true;
         group.add(spike);
 
-        // 光源
-        const light = new THREE.PointLight(0xffdd00, 2.5, 7, 2);
-        light.position.y = 0.8;
-        group.add(light);
-
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'gold_coin_ore', health: 20, maxHealth: 20,
@@ -703,6 +843,7 @@ class World {
             group.add(sm);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'stone', health: 40, maxHealth: 40,
@@ -745,6 +886,7 @@ class World {
             group.add(sm);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'iron', health: 50, maxHealth: 50,
@@ -798,6 +940,7 @@ class World {
             group.add(berry);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'berry', health: 15, maxHealth: 15,
@@ -872,6 +1015,7 @@ class World {
             group.add(spike);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'cactus', health: 8, maxHealth: 8,
@@ -924,6 +1068,7 @@ class World {
         top.rotation.z = 0.15;
         group.add(top);
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'kelp', health: 1, maxHealth: 1,
@@ -1013,6 +1158,7 @@ class World {
             drops[d.id] = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'river_chest', health: 1, maxHealth: 1,
@@ -1117,6 +1263,7 @@ class World {
         light.position.y = 4.9;
         group.add(light);
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'stone_temple', health: Infinity, maxHealth: Infinity,
@@ -1138,6 +1285,699 @@ class World {
         // 生成箱子（神殿中央）
         const chestPos = new THREE.Vector3(pos.x, pos.y + 0.4, pos.z);
         this._spawnTempleChest(chestPos);
+    }
+
+    // 矿洞入口（石维度20%概率生成）
+    _spawnCaveEntrance(pos) {
+        if (this.lobbyMode) return; // 娱乐房不生成矿洞
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 3x3深坑
+        const pitGeo = new THREE.BoxGeometry(3, 0.8, 3);
+        const pitMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.95, flatShading: false });
+        const pit = new THREE.Mesh(pitGeo, pitMat);
+        pit.position.y = -0.3;
+        group.add(pit);
+
+        // 坑口边缘石头
+        const edgeMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.85, flatShading: false });
+        for (const [ex, ez] of [[-1.5,-1.5],[1.5,-1.5],[-1.5,1.5],[1.5,1.5],[0,-1.5],[0,1.5],[-1.5,0],[1.5,0]]) {
+            const edge = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.6), edgeMat);
+            edge.position.set(ex, 0.1, ez);
+            edge.castShadow = true;
+            group.add(edge);
+        }
+
+        // 入口发光标记
+        const glowGeo = new THREE.CircleGeometry(1.2, 16);
+        glowGeo.rotateX(-Math.PI / 2);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x334466, transparent: true, opacity: 0.4 });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.position.y = -0.6;
+        group.add(glow);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'cave_entrance', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'cave_entrance', baseY: pos.y,
+            entrancePos: pos.clone(),
+        });
+    }
+
+    // ===== 冰刺维度 =====
+    _spawnIcePortal(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 冰晶门框
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.85 });
+        const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.2, 0.4), frameMat);
+        left.position.set(-0.9, 1.6, 0);
+        group.add(left);
+        const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.2, 0.4), frameMat);
+        right.position.set(0.9, 1.6, 0);
+        group.add(right);
+        const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.4), frameMat);
+        top.position.set(0, 3.2, 0);
+        group.add(top);
+
+        // 冰蓝色传送面
+        const portalGeo = new THREE.PlaneGeometry(1.4, 2.8);
+        const portalMat = new THREE.MeshBasicMaterial({ color: 0x66ddff, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+        const portalMesh = new THREE.Mesh(portalGeo, portalMat);
+        portalMesh.position.set(0, 1.6, 0);
+        group.add(portalMesh);
+
+        const portalLight = new THREE.PointLight(0x66ccff, 2, 8, 2);
+        portalLight.position.set(0, 1.6, 0);
+        group.add(portalLight);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'ice_portal', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'ice_portal', baseY: pos.y,
+        });
+    }
+
+    _spawnIceSpike(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 冰刺：锥形冰柱，不会掉下来，有碰撞箱
+        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.9 });
+        const h = 2 + Math.random() * 3;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.5 + Math.random() * 0.4, h, 6), spikeMat);
+        spike.position.y = h / 2;
+        spike.castShadow = true;
+        group.add(spike);
+
+        // 底部冰座
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x88bbdd, roughness: 0.3 });
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 8), baseMat);
+        base.position.y = 0.15;
+        group.add(base);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'ice_spike', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'ice_spike', baseY: pos.y,
+            colRadius: 0.8, colHeight: h,
+        });
+    }
+
+    _spawnIceExitPortal(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 返回传送门：冰晶拱门
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x66aadd, roughness: 0.3, metalness: 0.2 });
+        const arch = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 0.5), frameMat);
+        arch.position.y = 2.8;
+        group.add(arch);
+        const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.8, 0.5), frameMat);
+        left.position.set(-1.0, 1.4, 0);
+        group.add(left);
+        const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.8, 0.5), frameMat);
+        right.position.set(1.0, 1.4, 0);
+        group.add(right);
+
+        const portalGeo = new THREE.PlaneGeometry(1.6, 2.4);
+        const portalMat = new THREE.MeshBasicMaterial({ color: 0x44bbee, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+        const portalMesh = new THREE.Mesh(portalGeo, portalMat);
+        portalMesh.position.set(0, 1.4, 0);
+        group.add(portalMesh);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'ice_exit', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'ice_exit', baseY: pos.y,
+        });
+    }
+
+    _spawnIceResourcesInChunk(cx, cz, rng, offsetX, offsetZ, size) {
+        // 冰刺：每个区块4-8个
+        const spikeCount = 4 + Math.floor(rng() * 5);
+        for (let i = 0; i < spikeCount; i++) {
+            const x = offsetX + (rng() - 0.5) * (size - 2);
+            const z = offsetZ + (rng() - 0.5) * (size - 2);
+            const y = this.getHeight(x, z);
+            this._spawnIceSpike(new THREE.Vector3(x, y, z));
+        }
+
+        // 冰小球：每个区块1-3个
+        const ballCount = 1 + Math.floor(rng() * 3);
+        for (let i = 0; i < ballCount; i++) {
+            const x = offsetX + (rng() - 0.5) * (size - 4);
+            const z = offsetZ + (rng() - 0.5) * (size - 4);
+            const y = this.getHeight(x, z);
+            if (window.game && window.game.enemies) {
+                window.game.enemies._spawnIceBall(x, y, z);
+            }
+        }
+
+        // 出生点附近生成返回传送门
+        if (cx === 0 && cz === 0) {
+            this._spawnIceExitPortal(new THREE.Vector3(0, this.getHeight(0, 0), 0));
+        }
+    }
+
+    _spawnLobbyPillar(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6a6a6a, roughness: 0.4, metalness: 0.1, flatShading: false });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 1.2), bodyMat);
+        body.position.y = 2.5;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.6 });
+        const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 16), glowMat);
+        glow.position.y = 2.5;
+        group.add(glow);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'lobby_pillar', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'lobby_pillar', baseY: pos.y,
+        });
+    }
+
+    _spawnLobbyDecorations(cx, cz) {
+        if (cx !== 0 || cz !== 0) return;
+        const half = 52;
+        const corners = [[-half, -half], [half, -half], [half, half], [-half, half]];
+        for (const [x, z] of corners) {
+            this._spawnLobbyPillar(new THREE.Vector3(x, 0, z));
+        }
+
+        // 中央拱门建筑（远离玩家出生点，朝向南）
+        this._spawnLobbyArch(new THREE.Vector3(0, 0, -25), 0);
+
+        // 喷泉池
+        this._spawnLobbyFountain(new THREE.Vector3(0, 0, 8));
+
+        // 礼物盒
+        this._spawnLobbyGift(new THREE.Vector3(-12, 0, 18), 0xff4444);
+        this._spawnLobbyGift(new THREE.Vector3(12, 0, 18), 0x4444ff);
+        this._spawnLobbyGift(new THREE.Vector3(-18, 0, 22), 0xffdd44);
+
+        // 棕榈树
+        this._spawnLobbyPalm(new THREE.Vector3(-25, 0, 25), Math.PI / 4);
+        this._spawnLobbyPalm(new THREE.Vector3(25, 0, -40), -Math.PI / 6);
+
+        // 浆果小游戏：水池旁的浆果丛
+        this._spawnBerryBush(new THREE.Vector3(18, 0, 12));
+
+        // 打怪小游戏入口按钮（玩家出生点正前方）
+        this._spawnMonsterGameButton(new THREE.Vector3(0, 0, -8));
+
+        // 四周围墙
+        this._spawnLobbyWalls();
+    }
+
+    _spawnLobbyArch(pos, ry) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        group.rotation.y = ry;
+
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.5, flatShading: false });
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.4 });
+
+        // 左右塔
+        const leftTower = new THREE.Mesh(new THREE.BoxGeometry(4, 14, 4), stoneMat);
+        leftTower.position.set(-5, 7, 0);
+        leftTower.castShadow = true; leftTower.receiveShadow = true;
+        group.add(leftTower);
+        const rightTower = new THREE.Mesh(new THREE.BoxGeometry(4, 14, 4), stoneMat);
+        rightTower.position.set(5, 7, 0);
+        rightTower.castShadow = true; rightTower.receiveShadow = true;
+        group.add(rightTower);
+
+        // 横梁
+        const topBeam = new THREE.Mesh(new THREE.BoxGeometry(16, 3, 4), stoneMat);
+        topBeam.position.set(0, 14.5, 0);
+        topBeam.castShadow = true; topBeam.receiveShadow = true;
+        group.add(topBeam);
+
+        // 塔尖
+        const tipGeo = new THREE.ConeGeometry(1.5, 4, 4);
+        const leftTip = new THREE.Mesh(tipGeo, goldMat);
+        leftTip.position.set(-5, 17, 0);
+        group.add(leftTip);
+        const rightTip = new THREE.Mesh(tipGeo, goldMat);
+        rightTip.position.set(5, 17, 0);
+        group.add(rightTip);
+
+        // 中间金色徽章
+        const badge = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.6, 16), goldMat);
+        badge.rotation.x = Math.PI / 2;
+        badge.position.set(0, 10, 2.2);
+        group.add(badge);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'lobby_arch', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'lobby_arch', baseY: pos.y,
+        });
+    }
+
+    _spawnLobbyFountain(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        // 水池
+        const pool = new THREE.Mesh(new THREE.BoxGeometry(18, 0.15, 18), new THREE.MeshStandardMaterial({
+            color: 0x33aaff, transparent: true, opacity: 0.7, roughness: 0.05, metalness: 0.1
+        }));
+        pool.position.y = 0.05;
+        pool.receiveShadow = true;
+        group.add(pool);
+
+        // 池边
+        const rimMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 });
+        for (const [dx, dz] of [[-9.5, 0], [9.5, 0], [0, -9.5], [0, 9.5]]) {
+            const rim = new THREE.Mesh(new THREE.BoxGeometry(dx === 0 ? 19.5 : 1, 0.6, dz === 0 ? 19.5 : 1), rimMat);
+            rim.position.set(dx, 0.3, dz);
+            rim.castShadow = true; rim.receiveShadow = true;
+            group.add(rim);
+        }
+
+        // 中央喷水柱
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.5, 16), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+        pillar.position.y = 1.25;
+        pillar.castShadow = true; pillar.receiveShadow = true;
+        group.add(pillar);
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 5, 16), new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6 }));
+        beam.position.y = 3.5;
+        group.add(beam);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'lobby_fountain', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'lobby_fountain', baseY: pos.y,
+        });
+    }
+
+    _spawnLobbyGift(pos, color) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 }));
+        box.position.y = 1.1;
+        box.castShadow = true; box.receiveShadow = true;
+        group.add(box);
+
+        const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+        const vRib = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.22, 2.3), ribbonMat);
+        vRib.position.y = 1.1;
+        group.add(vRib);
+        const hRib = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.22, 0.35), ribbonMat);
+        hRib.position.y = 1.1;
+        group.add(hRib);
+
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 8, 16), ribbonMat);
+        bow.position.y = 2.35;
+        bow.rotation.x = Math.PI / 2;
+        group.add(bow);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'lobby_gift', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'lobby_gift', baseY: pos.y,
+        });
+    }
+
+    _spawnLobbyPalm(pos, ry) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+        group.rotation.y = ry;
+
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 8, 8), new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8 }));
+        trunk.position.y = 4;
+        trunk.castShadow = true; trunk.receiveShadow = true;
+        group.add(trunk);
+
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x33aa33, roughness: 0.6 });
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.5, 0.15), leafMat);
+            leaf.position.y = 8;
+            leaf.rotation.z = 0.6;
+            leaf.rotation.y = angle;
+            leaf.position.x = Math.sin(angle) * 1.2;
+            leaf.position.z = Math.cos(angle) * 1.2;
+            // 让叶子向外伸展
+            const dir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).multiplyScalar(1.8);
+            leaf.translateOnAxis(dir.clone().normalize(), 1.5);
+            leaf.lookAt(leaf.position.clone().add(dir));
+            group.add(leaf);
+        }
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'lobby_palm', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'lobby_palm', baseY: pos.y,
+        });
+    }
+
+    _spawnLobbyWalls() {
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.45 });
+        const wallH = 5;
+        const wallT = 1.2;
+        const range = 56;
+        const span = 112;
+        const sides = [
+            { w: span, d: wallT, x: 0, z: -range },
+            { w: span, d: wallT, x: 0, z: range },
+            { w: wallT, d: span, x: -range, z: 0 },
+            { w: wallT, d: span, x: range, z: 0 },
+        ];
+        for (const s of sides) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(s.w, wallH, s.d), wallMat);
+            mesh.position.set(s.x, wallH / 2, s.z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            this._applyRetroToMesh(mesh);
+            this.scene.add(mesh);
+            this.resources.push({
+                mesh: mesh, type: 'lobby_wall', health: Infinity, maxHealth: Infinity,
+                depleted: false, group: 'lobby_wall', baseY: 0,
+            });
+        }
+    }
+
+    _spawnBerryBush(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const bushMat = new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 0.7 });
+        const bush = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), bushMat);
+        bush.scale.y = 0.7;
+        bush.position.y = 0.9;
+        bush.castShadow = true; bush.receiveShadow = true;
+        group.add(bush);
+
+        const berryMat = new THREE.MeshStandardMaterial({ color: 0xff2244, roughness: 0.3 });
+        for (let i = 0; i < 8; i++) {
+            const b = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), berryMat);
+            const ang = Math.random() * Math.PI * 2;
+            const rad = 0.6 + Math.random() * 0.5;
+            b.position.set(Math.cos(ang) * rad, 0.8 + Math.random() * 0.4, Math.sin(ang) * rad);
+            group.add(b);
+        }
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'berry_bush', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'berry_bush', baseY: pos.y, drops: { berry: 1 },
+        });
+    }
+
+    _spawnMonsterGameButton(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 1.6), baseMat);
+        base.position.y = 0.2;
+        base.castShadow = true; base.receiveShadow = true;
+        group.add(base);
+
+        const btnMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.3, emissive: 0x330000 });
+        const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), btnMat);
+        btn.position.y = 0.55;
+        btn.castShadow = true;
+        group.add(btn);
+
+        const signMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+        const sign = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.1), signMat);
+        sign.position.set(0, 1.6, 0);
+        group.add(sign);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'monster_game_button', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'monster_game_button', baseY: pos.y,
+        });
+    }
+
+    // 获取当前石维度矿洞入口位置列表（用于持久化）
+    getCaveEntrances() {
+        const list = [];
+        for (const r of this.resources) {
+            if (r.type === 'cave_entrance' && r.entrancePos) {
+                const p = r.entrancePos;
+                list.push({ x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) });
+            }
+        }
+        return list;
+    }
+
+    // 从持久化列表恢复石维度矿洞入口（去重）
+    restoreCaveEntrances(list) {
+        if (!Array.isArray(list) || !list.length) return;
+        const existing = new Set();
+        for (const r of this.resources) {
+            if (r.type === 'cave_entrance' && r.entrancePos) {
+                const k = `${r.entrancePos.x.toFixed(1)},${r.entrancePos.z.toFixed(1)}`;
+                existing.add(k);
+            }
+        }
+        for (const e of list) {
+            const k = `${(+e.x).toFixed(1)},${(+e.z).toFixed(1)}`;
+            if (existing.has(k)) continue;
+            this._spawnCaveEntrance(new THREE.Vector3(+e.x, +e.y, +e.z));
+            existing.add(k);
+            // 标记区块，避免后续RNG重复生成
+            const cx = Math.floor((+e.x) / this.chunkSize);
+            const cz = Math.floor((+e.z) / this.chunkSize);
+            this._caveEntranceChunks.add(`${cx},${cz}`);
+        }
+    }
+
+    // 洞穴世界 getHeight
+    _getCaveHeight(x, z) {
+        // 洞穴地面基本平坦，有轻微起伏
+        return this._noise(x * 0.3, z * 0.3) * 0.5;
+    }
+
+    // 洞穴世界区块生成
+    _spawnCaveResourcesInChunk(cx, cz) {
+        const size = this.chunkSize;
+        const offsetX = cx * size;
+        const offsetZ = cz * size;
+        const seed = (cx * 73856093) ^ (cz * 19349663);
+        const rng = this._seededRandom(seed);
+
+        // 生成洞穴矿物
+        const oreCount = 4 + Math.floor(rng() * 6);
+        for (let i = 0; i < oreCount; i++) {
+            const x = offsetX + (rng() - 0.5) * (size - 4);
+            const z = offsetZ + (rng() - 0.5) * (size - 4);
+            const y = this._getCaveHeight(x, z);
+            const roll = rng();
+            if (roll < 0.15) {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'diamond');
+            } else if (roll < 0.35) {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'cold_iron');
+            } else if (roll < 0.55) {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'redstone');
+            } else if (roll < 0.70) {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'fossil');
+            } else if (roll < 0.85) {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'iron_ore');
+            } else {
+                this._spawnCaveOre(new THREE.Vector3(x, y, z), 'gold_ore');
+            }
+        }
+
+        // 10%概率生成洞穴宝箱
+        if (rng() < 0.10) {
+            const bx = offsetX + (rng() - 0.5) * (size - 6);
+            const bz = offsetZ + (rng() - 0.5) * (size - 6);
+            const by = this._getCaveHeight(bx, bz);
+            this._spawnCaveChest(new THREE.Vector3(bx, by, bz));
+        }
+
+        // 生成爬梯（返回地表）—— 每个区块固定生成1个
+        const lx = offsetX + (rng() - 0.5) * (size - 4);
+        const lz = offsetZ + (rng() - 0.5) * (size - 4);
+        const ly = this._getCaveHeight(lx, lz);
+        this._spawnCaveLadder(new THREE.Vector3(lx, ly, lz));
+
+        // 生成洞穴怪物
+        if (window.game && window.game.enemies) {
+            const monsterCount = 1 + Math.floor(rng() * 3);
+            for (let i = 0; i < monsterCount; i++) {
+                const mx = offsetX + (rng() - 0.5) * (size - 4);
+                const mz = offsetZ + (rng() - 0.5) * (size - 4);
+                const my = this._getCaveHeight(mx, mz);
+                const mRoll = rng();
+                if (mRoll < 0.25) {
+                    window.game.enemies._spawnCaveSpider(mx, my, mz);
+                } else if (mRoll < 0.50) {
+                    window.game.enemies._spawnCaveBat(mx, my, mz);
+                } else if (mRoll < 0.70) {
+                    window.game.enemies._spawnCaveSkeleton(mx, my, mz);
+                } else if (mRoll < 0.85) {
+                    window.game.enemies._spawnCaveSlime(mx, my, mz);
+                } else {
+                    window.game.enemies._spawnCaveGiant(mx, my, mz);
+                }
+            }
+        }
+    }
+
+    // 洞穴矿物
+    _spawnCaveOre(pos, oreType) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const oreColors = {
+            diamond: 0x42e8f4, cold_iron: 0x88aacc, redstone: 0xff3333,
+            fossil: 0xc8a878, iron_ore: 0x8a7060, gold_ore: 0xffcc00,
+        };
+        const oreDrops = {
+            diamond: { diamond: 1 }, cold_iron: { cold_iron: 2 },
+            redstone: { redstone: 3 }, fossil: { fossil: 1 },
+            iron_ore: { iron_ore: 3 }, gold_ore: { gold_ore: 2 },
+        };
+        const oreHealth = {
+            diamond: 30, cold_iron: 20, redstone: 15,
+            fossil: 10, iron_ore: 10, gold_ore: 12,
+        };
+
+        const color = oreColors[oreType] || 0x888888;
+        const geo = new THREE.DodecahedronGeometry(0.7, 1);
+        const mat = new THREE.MeshStandardMaterial({
+            color: color, roughness: 0.4, metalness: 0.3,
+            emissive: color, emissiveIntensity: 0.15, flatShading: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = 0.5;
+        mesh.scale.set(1.1, 0.8, 1.1);
+        mesh.castShadow = true;
+        group.add(mesh);
+
+        // 矿石结晶
+        const crystalGeo = new THREE.OctahedronGeometry(0.2, 0);
+        const crystalMat = new THREE.MeshStandardMaterial({
+            color: color, roughness: 0.1, metalness: 0.6,
+            emissive: color, emissiveIntensity: 0.5,
+        });
+        for (let i = 0; i < 3; i++) {
+            const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+            const angle = (i / 3) * Math.PI * 2;
+            crystal.position.set(Math.cos(angle) * 0.5, 0.8 + Math.random() * 0.3, Math.sin(angle) * 0.5);
+            group.add(crystal);
+        }
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'cave_ore_' + oreType, health: oreHealth[oreType] || 10,
+            maxHealth: oreHealth[oreType] || 10,
+            drops: oreDrops[oreType] || { stone: 3 },
+            depleted: false, respawnTimer: 0, respawnTime: 9999,
+            group: 'rock', baseY: pos.y, isCaveOre: true,
+        });
+    }
+
+    // 洞穴宝箱
+    _spawnCaveChest(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const boxGeo = new THREE.BoxGeometry(0.8, 0.6, 0.6);
+        const boxMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.7, flatShading: false });
+        const box = new THREE.Mesh(boxGeo, boxMat);
+        box.position.y = 0.3;
+        box.castShadow = true;
+        group.add(box);
+
+        // 锁
+        const lockGeo = new THREE.BoxGeometry(0.15, 0.15, 0.05);
+        const lockMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.8 });
+        const lock = new THREE.Mesh(lockGeo, lockMat);
+        lock.position.set(0, 0.35, 0.33);
+        group.add(lock);
+
+        // 随机掉落
+        const possibleDrops = [
+            { id: 'diamond', min: 1, max: 3 },
+            { id: 'cold_iron', min: 2, max: 5 },
+            { id: 'gold_ore', min: 3, max: 8 },
+            { id: 'redstone', min: 3, max: 6 },
+            { id: 'iron_ingot', min: 2, max: 5 },
+            { id: 'rare_stone', min: 1, max: 3 },
+            { id: 'fossil', min: 1, max: 2 },
+        ];
+        const numDrops = 2 + Math.floor(Math.random() * 3);
+        const drops = {};
+        const shuffled = [...possibleDrops].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < numDrops && i < shuffled.length; i++) {
+            const d = shuffled[i];
+            drops[d.id] = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
+        }
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'cave_chest', health: 1, maxHealth: 1,
+            drops: drops, depleted: false, respawnTimer: 0,
+            respawnTime: 9999, group: 'cave_chest', baseY: pos.y, needsKey: true,
+        });
+    }
+
+    // 洞穴爬梯（返回地表）
+    _spawnCaveLadder(pos) {
+        const group = new THREE.Group();
+        group.position.copy(pos);
+
+        const ladderMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.8, flatShading: false });
+        // 两根竖杆
+        for (const lx of [-0.25, 0.25]) {
+            const poleGeo = new THREE.BoxGeometry(0.08, 2, 0.08);
+            const pole = new THREE.Mesh(poleGeo, ladderMat);
+            pole.position.set(lx, 1, 0);
+            pole.castShadow = true;
+            group.add(pole);
+        }
+        // 横杆
+        for (let i = 0; i < 5; i++) {
+            const rungGeo = new THREE.BoxGeometry(0.5, 0.06, 0.06);
+            const rung = new THREE.Mesh(rungGeo, ladderMat);
+            rung.position.set(0, 0.3 + i * 0.4, 0);
+            group.add(rung);
+        }
+
+        // 发光提示
+        const glowGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 8);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x88aa66, transparent: true, opacity: 0.3 });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        glow.position.y = 0.05;
+        group.add(glow);
+
+        this._applyRetroToMesh(group);
+        this.scene.add(group);
+        this.resources.push({
+            mesh: group, type: 'cave_ladder', health: Infinity, maxHealth: Infinity,
+            depleted: false, group: 'cave_ladder', baseY: pos.y,
+        });
     }
 
     // 石神殿箱子：固定掉落 苹果2-9, 石头1-6, 超级石头0-4
@@ -1202,6 +2042,7 @@ class World {
             drops.super_stone = superStoneRoll;
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.resources.push({
             mesh: group, type: 'temple_chest', health: 1, maxHealth: 1,
@@ -1213,6 +2054,46 @@ class World {
     // 采集：返回获得的物品 {id: amount}
     harvest(resource, toolPower = 0, axeId = null, toolCharge = 0) {
         if (resource.depleted) return null;
+        if (resource.type === 'cave_entrance' || resource.type === 'cave_ladder') return null;
+
+        // 娱乐场大厅中除浆果丛外不可采集
+        if (this.lobbyMode && resource.type !== 'berry_bush') return null;
+
+        // 娱乐场浆果丛：点击一次获得1个浆果，购买木剑+1、木镐+2，效率可倍增，不会消失
+        if (resource.type === 'berry_bush') {
+            const upg = window.game && window.game.berryUpgrades;
+            let amount = 1;
+            if (upg) {
+                amount += (upg.wood_sword || 0);
+                amount += (upg.wood_pickaxe || 0) * 2;
+                amount *= (upg.efficiency || 1);
+            }
+            if (upg) {
+                upg.collectCount = (upg.collectCount || 0) + 1;
+                if (upg.collectCount >= 30 && (upg.randomizerCount || 0) > 0) {
+                    upg.collectCount = 0;
+                    upg.randomizerCount -= 1;
+                    const roll = Math.random();
+                    if (roll < 0.30) {
+                        const current = window.game.inventory.getItemCount('berry');
+                        const bonus = Math.max(0, Math.floor(current / 1.4));
+                        if (bonus > 0) {
+                            window.game.inventory.addItem('berry', bonus);
+                            window.game.onMessage(`事件：获得 ${bonus} 个额外浆果`);
+                        } else {
+                            window.game.onMessage('事件：库存不足，未获得额外浆果');
+                        }
+                    } else if (roll < 0.70) {
+                        upg.efficiency = (upg.efficiency || 1) * 3;
+                        window.game.onMessage(`事件：采集效率提升至 ${upg.efficiency} 倍`);
+                    } else {
+                        window.game.onMessage('事件：什么也没发生');
+                    }
+                }
+            }
+            return { berry: Math.floor(amount) };
+        }
+
         const damage = 5 + toolPower * 5;
         resource.health -= damage;
         // 受击闪烁
@@ -1270,6 +2151,12 @@ class World {
                 drops.wood = (drops.wood || 0) + 23;
                 drops.willow = (drops.willow || 0) + 12;
             }
+            // 最终石斧砍完树95%概率额外掉落5苹果99木材99柳条
+            if (resource.group === 'tree' && axeId === 'ultimate_stone_axe' && Math.random() < 0.95) {
+                drops.apple = (drops.apple || 0) + 5;
+                drops.wood = (drops.wood || 0) + 99;
+                drops.willow = (drops.willow || 0) + 99;
+            }
             // 确凿者砍完树80%概率额外掉落1苹果23木材12柳条
             if (resource.group === 'tree' && axeId === 'certain_one' && Math.random() < 0.80) {
                 drops.apple = (drops.apple || 0) + 1;
@@ -1288,6 +2175,12 @@ class World {
     }
 
     interact(resource) {
+        // 打怪小游戏入口按钮
+        if (resource.type === 'monster_game_button') {
+            return { __monster_game: 1 };
+        }
+        // 娱乐场大厅中除浆果丛外不能交互获取
+        if (this.lobbyMode && resource.type !== 'berry_bush') return null;
         if (resource.type === 'river_chest' && !resource.depleted) {
             resource.depleted = true;
             resource.respawnTimer = resource.respawnTime;
@@ -1297,6 +2190,31 @@ class World {
         if ((resource.type === 'berry' || resource.type === 'kelp' || resource.type === 'cactus') && !resource.depleted) {
             resource.depleted = true;
             resource.respawnTimer = resource.respawnTime;
+            resource.mesh.visible = false;
+            return { ...resource.drops };
+        }
+        if (resource.type === 'cave_entrance') {
+            return { __cave_enter: 1 };
+        }
+        if (resource.type === 'cave_ladder') {
+            return { __cave_exit: 1 };
+        }
+        if (resource.type === 'ice_portal') {
+            return { __ice_enter: 1 };
+        }
+        if (resource.type === 'ice_exit') {
+            return { __ice_exit: 1 };
+        }
+        if (resource.type === 'cave_chest' && !resource.depleted) {
+            if (resource.needsKey) {
+                const inv = window.game && window.game.inventory;
+                if (!inv || !inv.has('cave_key')) {
+                    if (window.game) window.game.onMessage('需要洞穴钥匙才能打开此宝箱！');
+                    return null;
+                }
+                inv.removeItem('cave_key', 1);
+            }
+            resource.depleted = true;
             resource.mesh.visible = false;
             return { ...resource.drops };
         }
@@ -1311,35 +2229,37 @@ class World {
         group.rotation.y = yaw;
 
         if (itemId === 'wall_wood') {
-            const geo = new THREE.BoxGeometry(2, 3, 0.2);
+            const geo = new THREE.BoxGeometry(1, 1, 1);
             const mat = new THREE.MeshStandardMaterial({ color: 0x7a5a35, roughness: 0.8, flatShading: false });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             group.add(mesh);
-            // 木纹装饰条
+            // 木纹边线装饰
             const trimMat = new THREE.MeshStandardMaterial({ color: 0x5a3a18, roughness: 0.85 });
-            for (let i = 0; i < 3; i++) {
-                const trimGeo = new THREE.BoxGeometry(2.02, 0.06, 0.22);
-                const trim = new THREE.Mesh(trimGeo, trimMat);
-                trim.position.y = 0.5 + i * 1.0;
-                group.add(trim);
-            }
+            const trimGeoX = new THREE.BoxGeometry(1.02, 0.04, 1.02);
+            const trim1 = new THREE.Mesh(trimGeoX, trimMat);
+            trim1.position.y = 0.48;
+            group.add(trim1);
+            const trim2 = new THREE.Mesh(trimGeoX, trimMat);
+            trim2.position.y = -0.48;
+            group.add(trim2);
         } else if (itemId === 'wall_stone') {
-            const geo = new THREE.BoxGeometry(2, 3, 0.2);
+            const geo = new THREE.BoxGeometry(1, 1, 1);
             const mat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.85, flatShading: false, metalness: 0.05 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             group.add(mesh);
-            // 石纹装饰条
+            // 石砖边线装饰
             const trimMat = new THREE.MeshStandardMaterial({ color: 0x6a6a6a, roughness: 0.85 });
-            for (let i = 0; i < 3; i++) {
-                const trimGeo = new THREE.BoxGeometry(2.02, 0.06, 0.22);
-                const trim = new THREE.Mesh(trimGeo, trimMat);
-                trim.position.y = 0.5 + i * 1.0;
-                group.add(trim);
-            }
+            const trimGeoX = new THREE.BoxGeometry(1.02, 0.04, 1.02);
+            const trim1 = new THREE.Mesh(trimGeoX, trimMat);
+            trim1.position.y = 0.48;
+            group.add(trim1);
+            const trim2 = new THREE.Mesh(trimGeoX, trimMat);
+            trim2.position.y = -0.48;
+            group.add(trim2);
         } else if (itemId === 'campfire') {
             // 篝火：精致石圈+木柴+火焰
             const stoneGeo = new THREE.DodecahedronGeometry(0.32, 2);
@@ -2073,6 +2993,7 @@ class World {
             group.add(altarLight);
         }
 
+        this._applyRetroToMesh(group);
         this.scene.add(group);
         this.buildings.push({
             mesh: group,
@@ -2086,6 +3007,7 @@ class World {
             monumentName: null,
             mysteryBoxStorage: [null, null],
             goldAltarStorage: [null, null],
+            forgeStorage: [null, null, null],
             charge: charge,
         });
         return true;
@@ -2136,7 +3058,10 @@ class World {
     // 检查是否靠近篝火
     isNearCampfire(pos) {
         for (const cf of this.campfires) {
-            if (cf.position.distanceTo(pos) < 5) return true;
+            const dx = cf.position.x - pos.x;
+            const dz = cf.position.z - pos.z;
+            const dy = cf.position.y - pos.y;
+            if (dx * dx + dy * dy + dz * dz < 25) return true;
         }
         return false;
     }
@@ -2182,6 +3107,11 @@ class World {
 
     // 昼夜循环
     updateDayNight(dt) {
+        if (this.worldType === 'stone' && this.lobbyMode) {
+            // 娱乐场大厅：永昼，不推进时间
+            this.isNight = false;
+            return null;
+        }
         if (this.worldType === 'stone') {
             // 石头世界：永夜，不推进时间
             this.isNight = true;
@@ -2189,6 +3119,16 @@ class World {
         }
         if (this.worldType === 'gold') {
             // 金维度：永昼，不推进时间
+            this.isNight = false;
+            return null;
+        }
+        if (this.worldType === 'cave') {
+            // 洞穴：永夜
+            this.isNight = true;
+            return null;
+        }
+        if (this.worldType === 'ice') {
+            // 冰刺维度：永昼
             this.isNight = false;
             return null;
         }
@@ -2209,6 +3149,24 @@ class World {
     }
 
     updateSun() {
+        if (this.worldType === 'stone' && this.lobbyMode) {
+            // 娱乐场大厅：永昼明亮光照
+            this.sun.intensity = 2.0;
+            this.ambient.intensity = 0.8;
+            this.hemi.intensity = 0.7;
+            const lobbySky = new THREE.Color(0x87ceeb);
+            this.scene.background = lobbySky;
+            this.scene.fog.color = lobbySky;
+            this.scene.fog.near = 50;
+            this.scene.fog.far = 300;
+            this.sun.color.setHex(0xfff5e8);
+            if (this._playerPos) {
+                this.sun.position.set(this._playerPos.x + 30, 50, this._playerPos.z + 20);
+                this.sun.target.position.copy(this._playerPos);
+                this.sun.target.updateMatrixWorld();
+            }
+            return;
+        }
         if (this.worldType === 'stone') {
             // 石头世界：永夜光照
             this.sun.intensity = 0.05;
@@ -2243,6 +3201,48 @@ class World {
             return;
         }
 
+        if (this.worldType === 'ice') {
+            // 冰刺维度：冷蓝色永昼光照
+            this.sun.intensity = 1.6;
+            this.ambient.intensity = 0.7;
+            this.hemi.intensity = 0.6;
+            const iceSky = new THREE.Color(0x9fc8e8);
+            this.scene.background = iceSky;
+            this.scene.fog.color = iceSky;
+            this.scene.fog.near = 40;
+            this.scene.fog.far = 200;
+            this.sun.color.setHex(0xd8ecff);
+            if (this._playerPos) {
+                this.sun.position.set(this._playerPos.x + 20, 50, this._playerPos.z + 15);
+                this.sun.target.position.copy(this._playerPos);
+                this.sun.target.updateMatrixWorld();
+            }
+            return;
+        }
+
+        if (this.worldType === 'cave') {
+            // 洞穴：极暗光照
+            this.sun.intensity = 0.08;
+            this.ambient.intensity = 0.12;
+            this.hemi.intensity = 0.08;
+            const caveSky = new THREE.Color(0x0a0a12);
+            this.scene.background = caveSky;
+            this.scene.fog.color = caveSky;
+            this.scene.fog.near = 5;
+            this.scene.fog.far = 40;
+            this.sun.color.setHex(0x334455);
+            if (this._playerPos) {
+                this.sun.position.set(this._playerPos.x, 20, this._playerPos.z + 10);
+                this.sun.target.position.copy(this._playerPos);
+                this.sun.target.updateMatrixWorld();
+            }
+            return;
+        }
+
+        // 恢复雾距离
+        this.scene.fog.near = 50;
+        this.scene.fog.far = 300;
+
         const progress = this.currentHour / 24;
         const angle = progress * Math.PI * 2 - Math.PI / 2;
         this.sun.position.set(Math.cos(angle) * 50, Math.sin(angle) * 50, 20);
@@ -2260,15 +3260,16 @@ class World {
         this.ambient.intensity = 0.1 + dayFactor * 0.3;
         this.hemi.intensity = 0.05 + dayFactor * 0.25;
 
-        // 天空颜色
-        const dayColor = new THREE.Color(0x87ceeb);
-        const nightColor = new THREE.Color(0x0a0a20);
-        const sunsetColor = new THREE.Color(0xff7733);
+        // 天空颜色（复用对象避免GC压力）
+        if (!this._dayColor) this._dayColor = new THREE.Color(0x87ceeb);
+        if (!this._nightColor) this._nightColor = new THREE.Color(0x0a0a20);
+        if (!this._sunsetColor) this._sunsetColor = new THREE.Color(0xff7733);
+        if (!this._skyColor) this._skyColor = new THREE.Color();
         let skyColor;
         if (dayFactor > 0.3) {
-            skyColor = dayColor.clone().lerp(nightColor, 1 - dayFactor);
+            skyColor = this._dayColor.clone().lerp(this._nightColor, 1 - dayFactor);
         } else {
-            skyColor = nightColor.clone().lerp(sunsetColor, dayFactor / 0.3);
+            skyColor = this._nightColor.clone().lerp(this._sunsetColor, dayFactor / 0.3);
         }
         this.scene.background = skyColor;
         this.scene.fog.color = skyColor;
@@ -2293,11 +3294,14 @@ class World {
                 }
             }
         }
-        // 篝火火焰动画
+        // 篝火火焰动画（缓存时间，减少Date.now调用）
+        const now = performance.now();
+        const sinVal = Math.sin(now * 0.01);
+        const sinVal2 = Math.sin(now * 0.008);
         for (const cf of this.campfires) {
             if (cf.fire) {
-                cf.fire.scale.y = 0.8 + Math.sin(Date.now() * 0.01) * 0.2;
-                cf.light.intensity = 1.5 + Math.sin(Date.now() * 0.008) * 0.5;
+                cf.fire.scale.y = 0.8 + sinVal * 0.2;
+                cf.light.intensity = 1.5 + sinVal2 * 0.5;
             }
         }
     }
@@ -2309,6 +3313,12 @@ class World {
     }
 
     switchToWorld(type, playerPos) {
+        // 离开石维度前先保存矿洞入口（用于持久化）
+        if (this.worldType === 'stone' && !this.lobbyMode) {
+            if (this.getCaveEntrances) {
+                this._stoneCaveEntrances = this.getCaveEntrances();
+            }
+        }
         // 清除当前世界的区块和资源
         for (const key of Object.keys(this.chunks)) {
             this._removeChunk(key);
@@ -2339,6 +3349,10 @@ class World {
                 for (const b of this.buildings) {
                     this.scene.add(b.mesh);
                 }
+            } else if (this.lobbyMode) {
+                // 娱乐场大厅：不放传送门
+                this.buildings = [];
+                this.campfires = [];
             } else {
                 this.buildings = [];
                 this.campfires = [];
@@ -2347,6 +3361,31 @@ class World {
             }
             this.worldType = 'stone';
             this.waterMesh.visible = false;
+            if (!this.lobbyMode) {
+                // 恢复已持久化的矿洞入口
+                if (this._stoneCaveEntrances && this._stoneCaveEntrances.length && this.restoreCaveEntrances) {
+                    this.restoreCaveEntrances(this._stoneCaveEntrances);
+                }
+                // 确保至少有一个矿洞入口（新服务器/新房间首次进入石头世界时）
+                const hasCave = this.resources.some(r => r.type === 'cave_entrance');
+                if (!hasCave) {
+                    const ex = 18 + (Math.random() - 0.5) * 12;
+                    const ez = 18 + (Math.random() - 0.5) * 12;
+                    const ey = this.getHeight(ex, ez);
+                    this._spawnCaveEntrance(new THREE.Vector3(ex, ey, ez));
+                    const cx = Math.floor(ex / this.chunkSize);
+                    const cz = Math.floor(ez / this.chunkSize);
+                    this._caveEntranceChunks.add(`${cx},${cz}`);
+                    // 触发保存，让其他/后续玩家也能看到
+                    if (window.game && window.game.multiplayer && window.game.multiplayer.connected && window.game.multiplayer._saveBuildingsToServer) {
+                        setTimeout(() => {
+                            try { window.game.multiplayer._saveBuildingsToServer(); } catch (e) {}
+                        }, 0);
+                    }
+                }
+                // 同步当前入口列表，确保快照与去重一致
+                if (this.getCaveEntrances) this._stoneCaveEntrances = this.getCaveEntrances();
+            }
         } else if (type === 'gold') {
             // 进入金维度：保存当前世界状态
             this._goldReturnWorld = this.worldType;
@@ -2371,11 +3410,88 @@ class World {
             } else {
                 this.buildings = [];
                 this.campfires = [];
-                const portalPos = new THREE.Vector3(0, this.getHeight(0, 0), 0);
-                this.placeBuilding('portal', portalPos, 0);
+                // 金维度不创建传送门，只能通过传送石碑或死亡离开
             }
             this.worldType = 'gold';
             this.waterMesh.visible = false;
+        } else if (type === 'cave') {
+            if (this.lobbyMode) return; // 娱乐房禁止进入矿洞
+            // 进入洞穴：保存石维度状态
+            this._caveReturnPosition = playerPos.clone();
+            this._stoneBuildings = this.buildings;
+            this._stoneCampfires = this.campfires;
+            for (const b of this.buildings) {
+                this.scene.remove(b.mesh);
+            }
+            // 洞穴无建筑
+            this.buildings = [];
+            this.campfires = [];
+            this.worldType = 'cave';
+            this.waterMesh.visible = false;
+            // 洞穴黑暗光照
+            this.sun.intensity = 0.1;
+            this.ambient.intensity = 0.15;
+            this.hemi.intensity = 0.1;
+        } else if (type === 'ice') {
+            // 进入冰刺维度：保存普通世界状态
+            this._iceReturnPosition = playerPos.clone();
+            this._normalBuildings = this.buildings;
+            this._normalCampfires = this.campfires;
+            for (const b of this.buildings) {
+                this.scene.remove(b.mesh);
+            }
+            this.buildings = [];
+            this.campfires = [];
+            this.worldType = 'ice';
+            this.waterMesh.visible = false;
+        } else if (type === 'normal' && this.worldType === 'ice') {
+            // 从冰刺维度返回普通世界
+            for (const b of this.buildings) {
+                this.scene.remove(b.mesh);
+            }
+            this.buildings = this._normalBuildings || [];
+            this.campfires = this._normalCampfires || [];
+            for (const b of this.buildings) {
+                this.scene.add(b.mesh);
+            }
+            this.worldType = 'normal';
+            this.waterMesh.visible = true;
+        } else if (type === 'stone' && this.worldType === 'cave') {
+            // 从洞穴返回石维度
+            for (const b of this.buildings) {
+                this.scene.remove(b.mesh);
+            }
+            this.buildings = this._stoneBuildings || [];
+            this.campfires = this._stoneCampfires || [];
+            for (const b of this.buildings) {
+                this.scene.add(b.mesh);
+            }
+            this.worldType = 'stone';
+            this.waterMesh.visible = false;
+            // 恢复石维度光照
+            this.sun.intensity = 3.2;
+            this.ambient.intensity = 0.8;
+            this.hemi.intensity = 0.7;
+            // 恢复已持久化的矿洞入口
+            if (this._stoneCaveEntrances && this._stoneCaveEntrances.length && this.restoreCaveEntrances) {
+                this.restoreCaveEntrances(this._stoneCaveEntrances);
+            }
+            // 确保至少有一个矿洞入口
+            const hasCave2 = this.resources.some(r => r.type === 'cave_entrance');
+            if (!hasCave2) {
+                const ex = 18 + (Math.random() - 0.5) * 12;
+                const ez = 18 + (Math.random() - 0.5) * 12;
+                const ey = this.getHeight(ex, ez);
+                this._spawnCaveEntrance(new THREE.Vector3(ex, ey, ez));
+                const cx = Math.floor(ex / this.chunkSize);
+                const cz = Math.floor(ez / this.chunkSize);
+                this._caveEntranceChunks.add(`${cx},${cz}`);
+                if (window.game && window.game.multiplayer && window.game.multiplayer.connected && window.game.multiplayer._saveBuildingsToServer) {
+                    setTimeout(() => { try { window.game.multiplayer._saveBuildingsToServer(); } catch (e) {} }, 0);
+                }
+            }
+            // 同步当前入口列表，确保快照与去重一致
+            if (this.getCaveEntrances) this._stoneCaveEntrances = this.getCaveEntrances();
         } else {
             // 返回普通世界：保存当前世界状态，从场景移除当前世界建筑
             if (this.worldType === 'stone') {
@@ -2400,13 +3516,36 @@ class World {
 
         // 重新生成区块
         let targetPos;
-        if (type === 'stone') {
+        if (type === 'stone' && this._caveReturnPosition) {
+            // 从洞穴返回石维度
+            targetPos = this._caveReturnPosition;
+            this._caveReturnPosition = null;
+        } else if (type === 'cave') {
+            // 进入洞穴，从入口位置开始
+            targetPos = playerPos.clone();
+        } else if (type === 'stone') {
             targetPos = new THREE.Vector3(0, 0, 0);
         } else if (type === 'gold') {
             targetPos = new THREE.Vector3(0, 0, 0);
+        } else if (type === 'ice') {
+            // 进入冰刺维度，从原点（返回传送门）开始
+            targetPos = new THREE.Vector3(0, 0, 0);
+        } else if (type === 'normal' && this._iceReturnPosition) {
+            // 从冰刺维度返回普通世界
+            targetPos = this._iceReturnPosition;
+            this._iceReturnPosition = null;
         } else {
             targetPos = this.returnPosition || new THREE.Vector3(0, 0, 0);
         }
         this.updateChunks(targetPos);
+
+        // 联机时切换维度后立即保存快照，确保离开的维度的建筑被持久化
+        if (window.game && window.game.multiplayer && window.game.multiplayer.connected) {
+            setTimeout(() => {
+                if (window.game.multiplayer && window.game.multiplayer._saveBuildingsToServer) {
+                    window.game.multiplayer._saveBuildingsToServer();
+                }
+            }, 0);
+        }
     }
 }

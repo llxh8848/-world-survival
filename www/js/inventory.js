@@ -58,6 +58,17 @@ class Inventory {
         return remaining;
     }
 
+    has(itemId, amount = 1) {
+        let count = 0;
+        for (let i = 0; i < this.size; i++) {
+            if (this.items[i] && this.items[i].id === itemId) {
+                count += this.items[i].amount;
+                if (count >= amount) return true;
+            }
+        }
+        return false;
+    }
+
     hasItem(itemId, amount = 1) {
         return this.getItemCount(itemId) >= amount;
     }

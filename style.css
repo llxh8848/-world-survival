@@ -1,5 +1,15 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+@keyframes achSlideIn {
+    0% { transform: translateX(100px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes goldShimmer {
+    0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(255,215,0,0.3)); }
+    50% { filter: brightness(1.2) drop-shadow(0 0 16px rgba(255,215,0,0.6)); }
+}
+
 :root {
     --green: #6a9c5a;
     --green-dark: #4a7c3a;
@@ -34,12 +44,15 @@ canvas { display: block; }
     bottom: 16px;
     left: 18px;
     font-size: 1.3em;
-    color: #999;
     font-weight: bold;
-    text-shadow: 0 0 6px rgba(153, 153, 153, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.8);
+    background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
     letter-spacing: 2px;
     pointer-events: none;
     user-select: none;
+    animation: goldShimmer 2s ease-in-out infinite;
 }
 
 /* ===== 加载界面 ===== */
@@ -50,7 +63,7 @@ canvas { display: block; }
     z-index: 9999;
 }
 .loading-content { text-align: center; }
-.loading-content h1 { font-size: 3em; margin-bottom: 10px; background: linear-gradient(135deg, #6a9c5a, #8fc97a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.loading-content h1 { font-size: 3em; margin-bottom: 10px; background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(255,215,0,0.5); animation: goldShimmer 2s ease-in-out infinite; }
 .loading-content .subtitle { color: #888; margin-bottom: 30px; }
 .loading-bar {
     width: 320px; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px;
@@ -75,7 +88,7 @@ canvas { display: block; }
 .login-content {
     text-align: center; max-width: 400px; padding: 40px;
 }
-.login-content h1 { font-size: 3em; margin-bottom: 5px; }
+.login-content h1 { font-size: 3em; margin-bottom: 5px; background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(255,215,0,0.5); animation: goldShimmer 2s ease-in-out infinite; }
 .login-form {
     display: flex; flex-direction: column; gap: 12px;
     margin-bottom: 25px;
@@ -159,7 +172,7 @@ canvas { display: block; }
 .main-menu-content, .room-list-content {
     text-align: center; max-width: 500px; padding: 40px;
 }
-.main-menu-content h1, .room-list-content h1 { font-size: 3em; margin-bottom: 5px; }
+.main-menu-content h1, .room-list-content h1 { font-size: 3em; margin-bottom: 5px; background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(255,215,0,0.5); animation: goldShimmer 2s ease-in-out infinite; }
 .menu-buttons {
     display: flex; flex-direction: column; gap: 16px; margin: 30px 0;
 }
@@ -254,7 +267,7 @@ canvas { display: block; }
 .start-content {
     text-align: center; max-width: 600px; padding: 40px;
 }
-.start-content h1 { font-size: 3.5em; margin-bottom: 5px; background: linear-gradient(135deg, #6a9c5a, #8fc97a, #a8d8a0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.start-content h1 { font-size: 3.5em; margin-bottom: 5px; background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(255,215,0,0.5); animation: goldShimmer 2s ease-in-out infinite; }
 .subtitle { color: #888; font-size: 1.2em; margin-bottom: 30px; }
 .controls-hint {
     background: rgba(0,0,0,0.35);
@@ -789,6 +802,46 @@ body.is-mobile #mobileControls { display: block; }
 /* 手机端隐藏PC操作提示 */
 body.is-mobile .controls-hint { display: none; }
 
+/* 渲染优化开关 */
+#renderOptToggle {
+    position: absolute; bottom: 16px; left: 160px;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 6px 12px;
+    pointer-events: auto; user-select: none;
+    z-index: 500;
+}
+.render-opt-label {
+    font-size: 0.85em; color: #aaa; font-weight: bold;
+    letter-spacing: 1px;
+}
+.render-opt-switch {
+    position: relative; display: inline-block;
+    width: 36px; height: 20px;
+}
+.render-opt-switch input { opacity: 0; width: 0; height: 0; }
+.render-opt-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px; transition: 0.3s;
+}
+.render-opt-slider::before {
+    content: ''; position: absolute;
+    height: 14px; width: 14px; left: 3px; bottom: 3px;
+    background: #888; border-radius: 50%; transition: 0.3s;
+}
+.render-opt-switch input:checked + .render-opt-slider {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+}
+.render-opt-switch input:checked + .render-opt-slider::before {
+    transform: translateX(16px);
+    background: #fff;
+    box-shadow: 0 0 6px rgba(255,215,0,0.6);
+}
+
 /* 手机端面板适配 */
 @media (max-width: 600px) {
     .game-panel { min-width: 90vw; max-width: 95vw; padding: 12px; }
@@ -873,4 +926,33 @@ body.is-mobile .controls-hint { display: none; }
 }
 .btn-slot-create:disabled {
     opacity: 0.4; cursor: not-allowed;
+}
+
+/* 黄金祭坛UI */
+.gold-altar-sections {
+    display: flex; gap: 16px; padding: 10px 5px;
+}
+.gold-altar-section {
+    flex: 1; text-align: center;
+}
+.gold-altar-section h3 {
+    font-size: 1em; margin-bottom: 4px;
+}
+.gold-altar-hint {
+    font-size: 0.8em; color: #aaa; margin-bottom: 8px;
+}
+.gold-altar-grid {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+}
+.gold-altar-grid .inv-slot {
+    width: 48px; height: 48px;
+}
+.gold-altar-divider {
+    width: 2px; background: linear-gradient(to bottom, transparent, rgba(255,215,0,0.3), transparent);
+}
+.gold-altar-inv-section {
+    border-top: 1px solid #444; padding-top: 8px; margin-top: 4px;
+}
+.gold-altar-inv-section h3 {
+    font-size: 0.9em; margin-bottom: 6px;
 }

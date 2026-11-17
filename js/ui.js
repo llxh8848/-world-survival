@@ -81,7 +81,7 @@ class UI {
 
         // 聊天：T键打开输入框
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'KeyT' && this.game.running && this.game.multiplayer && this.game.multiplayer.connected) {
+            if (e.code === 'KeyT' && this.game.running) {
                 if (!this._anyPanelOpen() && document.getElementById('chatInput').style.display !== 'block') {
                     e.preventDefault();
                     this.openChatInput();
@@ -128,6 +128,14 @@ class UI {
         });
         document.getElementById('btnMysteryBoxClose').addEventListener('click', () => {
             this._closeMysteryBox();
+        });
+
+        // 锻造台按钮
+        document.getElementById('btnForgeStart').addEventListener('click', () => {
+            this._startForging();
+        });
+        document.getElementById('btnForgeClose').addEventListener('click', () => {
+            this._closeForge();
         });
 
         // 装备槽点击：已装备时卸下，空位时选择装备
@@ -860,8 +868,8 @@ class UI {
 
     openGoldAltar(altar) {
         this.activeGoldAltar = altar;
-        if (!Array.isArray(altar.goldAltarStorage) || altar.goldAltarStorage.length < 2) {
-            altar.goldAltarStorage = [null, null];
+        if (!Array.isArray(altar.goldAltarStorage) || altar.goldAltarStorage.length < 5) {
+            altar.goldAltarStorage = [null, null, null, null, null];
         }
         this.selectedGoldAltarSlot = null;
         this.selectedGoldAltarInvSlot = null;
@@ -873,11 +881,11 @@ class UI {
 
     _renderGoldAltar() {
         if (!this.activeGoldAltar) return;
-        const storageGrid = document.getElementById('goldAltarStorageGrid');
+        const teleportGrid = document.getElementById('goldAltarTeleportGrid');
+        const bossGrid = document.getElementById('goldAltarBossGrid');
         const inventoryGrid = document.getElementById('goldAltarInventoryGrid');
 
-        storageGrid.innerHTML = '';
-        for (let i = 0; i < 2; i++) {
+        const makeSlot = (i) => {
             const item = this.activeGoldAltar.goldAltarStorage[i];
             const slot = document.createElement('div');
             slot.className = 'inv-slot' + (item ? '' : ' empty') + (this.selectedGoldAltarSlot === i ? ' selected' : '');
@@ -897,8 +905,14 @@ class UI {
                 }
                 this._renderGoldAltar();
             });
-            storageGrid.appendChild(slot);
-        }
+            return slot;
+        };
+
+        teleportGrid.innerHTML = '';
+        for (let i = 0; i < 2; i++) teleportGrid.appendChild(makeSlot(i));
+
+        bossGrid.innerHTML = '';
+        for (let i = 2; i < 5; i++) bossGrid.appendChild(makeSlot(i));
 
         inventoryGrid.innerHTML = '';
         for (let i = 0; i < this.inventory.items.length; i++) {
@@ -975,20 +989,20 @@ class UI {
     }
 
     _checkGoldAltarSacrifice(altar) {
-        // 检查2个格子：一个放穿越器(portal)>=1，一个放石头(stone)>=5
+        // 检查传送格子(0-1)：一个放黄金(gold)>=3，一个放金矿(gold_ore)>=1
         const s0 = altar.goldAltarStorage[0];
         const s1 = altar.goldAltarStorage[1];
-        let portalSlot = null, stoneSlot = null;
-        if (s0 && s0.id === 'portal' && s0.amount >= 1) portalSlot = 0;
-        if (s1 && s1.id === 'portal' && s1.amount >= 1) portalSlot = 1;
-        if (s0 && s0.id === 'stone' && s0.amount >= 5) stoneSlot = 0;
-        if (s1 && s1.id === 'stone' && s1.amount >= 5) stoneSlot = 1;
-        if (portalSlot !== null && stoneSlot !== null && portalSlot !== stoneSlot) {
-            // 消耗1个穿越器和5个石头
-            altar.goldAltarStorage[portalSlot].amount -= 1;
-            if (altar.goldAltarStorage[portalSlot].amount <= 0) altar.goldAltarStorage[portalSlot] = null;
-            altar.goldAltarStorage[stoneSlot].amount -= 5;
-            if (altar.goldAltarStorage[stoneSlot].amount <= 0) altar.goldAltarStorage[stoneSlot] = null;
+        let goldSlot = null, oreSlot = null;
+        if (s0 && s0.id === 'gold' && s0.amount >= 3) goldSlot = 0;
+        if (s1 && s1.id === 'gold' && s1.amount >= 3) goldSlot = 1;
+        if (s0 && s0.id === 'gold_ore' && s0.amount >= 1) oreSlot = 0;
+        if (s1 && s1.id === 'gold_ore' && s1.amount >= 1) oreSlot = 1;
+        if (goldSlot !== null && oreSlot !== null && goldSlot !== oreSlot) {
+            // 消耗3个黄金和1个金矿
+            altar.goldAltarStorage[goldSlot].amount -= 3;
+            if (altar.goldAltarStorage[goldSlot].amount <= 0) altar.goldAltarStorage[goldSlot] = null;
+            altar.goldAltarStorage[oreSlot].amount -= 1;
+            if (altar.goldAltarStorage[oreSlot].amount <= 0) altar.goldAltarStorage[oreSlot] = null;
             // 关闭UI
             this.activeGoldAltar = null;
             document.getElementById('goldAltarUI').style.display = 'none';
@@ -997,6 +1011,56 @@ class UI {
             this.world.switchToWorld('gold', this.player.position);
             this.player.position.set(0, 5, 0);
             if (window.game) window.game.onMessage('🌟 献祭成功！传送到了金维度！');
+            return;
+        }
+
+        // 检查Boss召唤格子(2-4)：高级木材+石之心+神木
+        const b0 = altar.goldAltarStorage[2];
+        const b1 = altar.goldAltarStorage[3];
+        const b2 = altar.goldAltarStorage[4];
+        let hasHighWood = false, hasHeartOfStone = false, hasDivineWood = false;
+        if (b0 && b0.id === 'high_wood' && b0.amount >= 1) hasHighWood = true;
+        if (b1 && b1.id === 'heart_of_stone' && b1.amount >= 1) hasHeartOfStone = true;
+        if (b2 && b2.id === 'divine_wood' && b2.amount >= 1) hasDivineWood = true;
+        // 也检查交叉放置
+        const bossSlots = [b0, b1, b2];
+        for (const s of bossSlots) {
+            if (s && s.id === 'high_wood' && s.amount >= 1) hasHighWood = true;
+            if (s && s.id === 'heart_of_stone' && s.amount >= 1) hasHeartOfStone = true;
+            if (s && s.id === 'divine_wood' && s.amount >= 1) hasDivineWood = true;
+        }
+        if (hasHighWood && hasHeartOfStone && hasDivineWood) {
+            // 检查是否已有元素王
+            if (window.game && window.game.enemies) {
+                const existing = window.game.enemies.enemies.filter(e => !e.dead && e.enemyType === 'element_king').length;
+                if (existing > 0) {
+                    if (window.game) window.game.onMessage('已有元素王存在，无法再次召唤！');
+                    return;
+                }
+            }
+            // 消耗材料
+            for (let i = 2; i < 5; i++) {
+                const s = altar.goldAltarStorage[i];
+                if (s && (s.id === 'high_wood' || s.id === 'heart_of_stone' || s.id === 'divine_wood')) {
+                    s.amount -= 1;
+                    if (s.amount <= 0) altar.goldAltarStorage[i] = null;
+                }
+            }
+            // 召唤元素王
+            const pos = altar.mesh.position.clone();
+            const summonX = pos.x + (Math.random() - 0.5) * 4;
+            const summonZ = pos.z + (Math.random() - 0.5) * 4;
+            const summonY = this.world.getHeight(summonX, summonZ);
+            this.activeGoldAltar = null;
+            document.getElementById('goldAltarUI').style.display = 'none';
+            this.player.lockMouse();
+            if (window.game && window.game.enemies) {
+                window.game.enemies._spawnElementKing(summonX, summonY, summonZ);
+                if (window.game) window.game.onMessage('👑 元素王被召唤了！');
+                if (window.game.multiplayer && window.game.multiplayer.connected) {
+                    window.game.multiplayer.sendBossSpawn('element_king', summonX, summonY, summonZ);
+                }
+            }
         }
     }
 
@@ -1369,6 +1433,11 @@ class UI {
         }
         this.inventory.addItem(recipe.output, recipe.count);
         this.game.onMessage(`合成成功: ${ITEMS[recipe.output]?.name} x${recipe.count}`);
+        // 成就：做出知识书架
+        if (recipe.output === 'knowledge_bookshelf') {
+            console.log('[成就] 知识书架合成, calling unlockAchievement');
+            this.game.unlockAchievement('knowledge');
+        }
         this._renderCrafting();
         this._renderInventory();
     }
@@ -1484,17 +1553,48 @@ class UI {
     _teleportToMonument(name) {
         // 在当前维度查找
         let target = null;
+        let targetWorld = null;
         for (const b of this.game.world.buildings) {
             if (b.type === 'teleport_monument' && b.monumentName === name) {
                 target = b;
+                targetWorld = this.game.world.worldType;
                 break;
             }
         }
+        // 当前维度没找到，搜索其他维度的建筑
+        if (!target) {
+            const otherBuildingsLists = [
+                { list: this.game.world._normalBuildings, world: 'normal' },
+                { list: this.game.world._stoneBuildings, world: 'stone' },
+                { list: this.game.world._goldBuildings, world: 'gold' },
+            ];
+            for (const entry of otherBuildingsLists) {
+                if (!entry.list || entry.world === this.game.world.worldType) continue;
+                for (const b of entry.list) {
+                    if (b.type === 'teleport_monument' && b.monumentName === name) {
+                        target = b;
+                        targetWorld = entry.world;
+                        break;
+                    }
+                }
+                if (target) break;
+            }
+        }
         if (target) {
-            const pos = target.mesh.position;
-            this.player.position.set(pos.x, pos.y + 3, pos.z);
-            this.game.world.updateChunks(this.player.position);
-            this.game.onMessage('已传送到石碑: ' + name);
+            if (targetWorld && targetWorld !== this.game.world.worldType) {
+                // 跨维度传送
+                this.game.world.switchToWorld(targetWorld, this.player.position);
+                const pos = target.mesh.position;
+                this.player.position.set(pos.x, pos.y + 3, pos.z);
+                this.game.world.updateChunks(this.player.position);
+                this.game.onMessage('已传送到石碑: ' + name);
+            } else {
+                // 同维度传送
+                const pos = target.mesh.position;
+                this.player.position.set(pos.x, pos.y + 3, pos.z);
+                this.game.world.updateChunks(this.player.position);
+                this.game.onMessage('已传送到石碑: ' + name);
+            }
             return true;
         }
         return false;
@@ -1520,7 +1620,7 @@ class UI {
     _renderMysteryBox() {
         if (!this.activeMysteryBox) return;
         const mb = this.activeMysteryBox;
-        // 左侧：神木放置槽
+        // 左侧：神木/元素木放置槽
         const divineSlot = document.getElementById('mysteryBoxDivineSlot');
         const divineItem = mb.mysteryBoxStorage[0];
         divineSlot.className = 'inv-slot' + (divineItem ? '' : ' empty');
@@ -1529,21 +1629,22 @@ class UI {
             divineSlot.title = `${ITEMS[divineItem.id]?.name || divineItem.id} x${divineItem.amount}`;
         } else {
             divineSlot.innerHTML = '';
-            divineSlot.title = '放入神木';
+            divineSlot.title = '放入神木/金平/元素木';
         }
         divineSlot.onclick = () => this._mysteryBoxTakeOut(0);
 
-        // 右侧：木质装备放置槽
+        // 右侧：木质装备/护身符放置槽
         const equipSlot = document.getElementById('mysteryBoxEquipSlot');
         const equipItem = mb.mysteryBoxStorage[1];
         equipSlot.className = 'inv-slot' + (equipItem ? '' : ' empty');
         if (equipItem) {
             const charge = equipItem.charge || 0;
+            const durability = equipItem.durability !== undefined ? ` (耐久:${equipItem.durability})` : '';
             equipSlot.innerHTML = `<span class="slot-icon">${itemIconSVG(equipItem.id)}</span>${charge > 0 ? `<span class="slot-count" style="color:#ffd700">+${charge}</span>` : ''}`;
-            equipSlot.title = `${ITEMS[equipItem.id]?.name || equipItem.id}${charge > 0 ? ' (充能+' + charge + ')' : ''}`;
+            equipSlot.title = `${ITEMS[equipItem.id]?.name || equipItem.id}${charge > 0 ? ' (充能+' + charge + ')' : ''}${durability}`;
         } else {
             equipSlot.innerHTML = '';
-            equipSlot.title = '放入木质装备';
+            equipSlot.title = '放入木质装备/护身符';
         }
         equipSlot.onclick = () => this._mysteryBoxTakeOut(1);
 
@@ -1553,8 +1654,8 @@ class UI {
         for (let i = 0; i < this.inventory.size; i++) {
             const item = this.inventory.items[i];
             if (!item) continue;
-            const isDivine = item.id === 'divine_wood' || item.id === 'gold_coin';
-            const isChargeable = CHARGEABLE_WOOD_ITEMS.includes(item.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(item.id);
+            const isDivine = item.id === 'divine_wood' || item.id === 'gold_coin' || item.id === 'element_wood';
+            const isChargeable = CHARGEABLE_WOOD_ITEMS.includes(item.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(item.id) || TALISMAN_ITEMS.includes(item.id);
             if (!isDivine && !isChargeable) continue;
             const slot = document.createElement('div');
             slot.className = 'inv-slot';
@@ -1568,7 +1669,7 @@ class UI {
         // 开始按钮状态
         const btnStart = document.getElementById('btnMysteryBoxStart');
         const hasDivine = divineItem && divineItem.amount > 0;
-        const hasEquip = equipItem && (CHARGEABLE_WOOD_ITEMS.includes(equipItem.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(equipItem.id));
+        const hasEquip = equipItem && (CHARGEABLE_WOOD_ITEMS.includes(equipItem.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(equipItem.id) || TALISMAN_ITEMS.includes(equipItem.id));
         btnStart.disabled = !(hasDivine && hasEquip);
     }
 
@@ -1577,7 +1678,7 @@ class UI {
         const item = this.inventory.items[invIndex];
         if (!item) return;
         const mb = this.activeMysteryBox;
-        if (item.id === 'divine_wood' || item.id === 'gold_coin') {
+        if (item.id === 'divine_wood' || item.id === 'gold_coin' || item.id === 'element_wood') {
             if (mb.mysteryBoxStorage[0]) {
                 if (mb.mysteryBoxStorage[0].id !== item.id) {
                     this.game.onMessage('槽位已有不同物品！');
@@ -1588,7 +1689,7 @@ class UI {
                 mb.mysteryBoxStorage[0] = { id: item.id, amount: item.amount };
             }
             this.inventory.items[invIndex] = null;
-        } else if (CHARGEABLE_WOOD_ITEMS.includes(item.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(item.id)) {
+        } else if (CHARGEABLE_WOOD_ITEMS.includes(item.id) || CHARGEABLE_GOLD_PAN_ITEMS.includes(item.id) || TALISMAN_ITEMS.includes(item.id)) {
             if (mb.mysteryBoxStorage[1]) {
                 const emptyIdx = this.inventory.items.findIndex(s => !s);
                 if (emptyIdx >= 0) {
@@ -1649,12 +1750,215 @@ class UI {
             this.game.onMessage('该物品需要金平充能！');
             return;
         }
+        // 元素木为护身符增加耐久
+        if (divineItem.id === 'element_wood' && TALISMAN_ITEMS.includes(equipItem.id)) {
+            const def = ITEMS[equipItem.id];
+            if (!def.maxDurability) {
+                this.game.onMessage('该物品无法增加耐久！');
+                return;
+            }
+            if (equipItem.maxDurability === undefined) equipItem.maxDurability = def.maxDurability;
+            equipItem.maxDurability += 20;
+            equipItem.durability = equipItem.maxDurability;
+            divineItem.amount -= 1;
+            if (divineItem.amount <= 0) mb.mysteryBoxStorage[0] = null;
+            this.game.onMessage(`耐久提升！${ITEMS[equipItem.id]?.name || equipItem.id} 最大耐久+20 (当前: ${equipItem.maxDurability})，已回满！`);
+            this._renderMysteryBox();
+            return;
+        }
+        // 元素木不能用于普通充能
+        if (divineItem.id === 'element_wood') {
+            this.game.onMessage('元素木只能用于护身符耐久提升！');
+            return;
+        }
         // 消耗1个充能材料，装备充能+1
         divineItem.amount -= 1;
         if (divineItem.amount <= 0) mb.mysteryBoxStorage[0] = null;
         equipItem.charge = (equipItem.charge || 0) + 1;
         this.game.onMessage(`充能成功！${ITEMS[equipItem.id]?.name || equipItem.id} 充能+1 (当前: +${equipItem.charge})`);
         this._renderMysteryBox();
+    }
+
+    // ========== 锻造台 ==========
+    openForge(building) {
+        this.activeForge = building;
+        if (!Array.isArray(building.forgeStorage) || building.forgeStorage.length < 3) {
+            building.forgeStorage = [null, null, null];
+        }
+        const panel = document.getElementById('forgeUI');
+        panel.style.display = 'block';
+        this.player.unlockMouse();
+        this._renderForge();
+    }
+
+    _closeForge() {
+        document.getElementById('forgeUI').style.display = 'none';
+        this.activeForge = null;
+        if (this.player && this.game.running) this.player.lockMouse();
+    }
+
+    _renderForge() {
+        if (!this.activeForge) return;
+        const fg = this.activeForge;
+        // 左槽：木质装备
+        const equipSlot = document.getElementById('forgeEquipSlot');
+        const equipItem = fg.forgeStorage[0];
+        equipSlot.className = 'inv-slot' + (equipItem ? '' : ' empty');
+        if (equipItem) {
+            const charge = equipItem.charge || 0;
+            const uses = equipItem.uses !== undefined ? ` (耐久:${equipItem.uses})` : '';
+            equipSlot.innerHTML = `<span class="slot-icon">${itemIconSVG(equipItem.id)}</span>${charge > 0 ? `<span class="slot-count" style="color:#ffd700">+${charge}</span>` : ''}`;
+            equipSlot.title = `${ITEMS[equipItem.id]?.name || equipItem.id}${charge > 0 ? ' (充能+' + charge + ')' : ''}${uses}`;
+        } else {
+            equipSlot.innerHTML = '';
+            equipSlot.title = '放入木质装备（不含护身符）';
+        }
+        equipSlot.onclick = () => this._forgeTakeOut(0);
+
+        // 中槽：元素石
+        const stoneSlot = document.getElementById('forgeStoneSlot');
+        const stoneItem = fg.forgeStorage[1];
+        stoneSlot.className = 'inv-slot' + (stoneItem ? '' : ' empty');
+        if (stoneItem) {
+            stoneSlot.innerHTML = `<span class="slot-icon">${itemIconSVG(stoneItem.id)}</span><span class="slot-count">${stoneItem.amount > 1 ? stoneItem.amount : ''}</span>`;
+            stoneSlot.title = `${ITEMS[stoneItem.id]?.name || stoneItem.id} x${stoneItem.amount}`;
+        } else {
+            stoneSlot.innerHTML = '';
+            stoneSlot.title = '放入元素石';
+        }
+        stoneSlot.onclick = () => this._forgeTakeOut(1);
+
+        // 右槽：锻造产物
+        const resultSlot = document.getElementById('forgeResultSlot');
+        const resultItem = fg.forgeStorage[2];
+        resultSlot.className = 'inv-slot' + (resultItem ? '' : ' empty');
+        if (resultItem) {
+            const charge = resultItem.charge || 0;
+            const uses = resultItem.uses !== undefined ? ` (耐久:${resultItem.uses})` : '';
+            resultSlot.innerHTML = `<span class="slot-icon">${itemIconSVG(resultItem.id)}</span>${charge > 0 ? `<span class="slot-count" style="color:#ffd700">+${charge}</span>` : ''}`;
+            resultSlot.title = `${ITEMS[resultItem.id]?.name || resultItem.id}${charge > 0 ? ' (充能+' + charge + ')' : ''}${uses}`;
+        } else {
+            resultSlot.innerHTML = '';
+            resultSlot.title = '锻造产物';
+        }
+        resultSlot.onclick = () => this._forgeTakeOut(2);
+
+        // 库存列表
+        const invGrid = document.getElementById('forgeInventoryGrid');
+        invGrid.innerHTML = '';
+        for (let i = 0; i < this.inventory.size; i++) {
+            const item = this.inventory.items[i];
+            if (!item) continue;
+            const isForgeable = FORGEABLE_WOOD_ITEMS.includes(item.id);
+            const isStone = item.id === 'element_stone';
+            if (!isForgeable && !isStone) continue;
+            const slot = document.createElement('div');
+            slot.className = 'inv-slot';
+            const charge = item.charge || 0;
+            slot.innerHTML = `<span class="slot-icon">${itemIconSVG(item.id)}</span><span class="slot-count">${item.amount > 1 ? item.amount : ''}</span>${charge > 0 ? `<span style="color:#ffd700;font-size:10px">+${charge}</span>` : ''}`;
+            slot.title = `${ITEMS[item.id]?.name || item.id}${charge > 0 ? ' (充能+' + charge + ')' : ''}`;
+            slot.addEventListener('click', () => this._forgePutIn(i));
+            invGrid.appendChild(slot);
+        }
+
+        // 开始按钮状态
+        const btnStart = document.getElementById('btnForgeStart');
+        const hasEquip = equipItem && FORGE_MAP[equipItem.id];
+        const hasStone = stoneItem && stoneItem.amount > 0;
+        const hasResultSpace = !resultItem;
+        btnStart.disabled = !(hasEquip && hasStone && hasResultSpace);
+    }
+
+    _forgePutIn(invIndex) {
+        if (!this.activeForge) return;
+        const item = this.inventory.items[invIndex];
+        if (!item) return;
+        const fg = this.activeForge;
+        if (item.id === 'element_stone') {
+            if (fg.forgeStorage[1]) {
+                if (fg.forgeStorage[1].id !== item.id) {
+                    this.game.onMessage('槽位已有不同物品！');
+                    return;
+                }
+                fg.forgeStorage[1].amount += item.amount;
+            } else {
+                fg.forgeStorage[1] = { id: item.id, amount: item.amount };
+            }
+            this.inventory.items[invIndex] = null;
+        } else if (FORGEABLE_WOOD_ITEMS.includes(item.id)) {
+            if (fg.forgeStorage[0]) {
+                const emptyIdx = this.inventory.items.findIndex(s => !s);
+                if (emptyIdx >= 0) {
+                    this.inventory.items[emptyIdx] = fg.forgeStorage[0];
+                } else {
+                    this.game.onMessage('背包已满！');
+                    return;
+                }
+            }
+            fg.forgeStorage[0] = { id: item.id, amount: 1, charge: item.charge || 0, uses: item.uses };
+            if (item.amount > 1) {
+                item.amount -= 1;
+            } else {
+                this.inventory.items[invIndex] = null;
+            }
+        }
+        this.inventory.notify();
+        this._renderForge();
+    }
+
+    _forgeTakeOut(slotIndex) {
+        if (!this.activeForge) return;
+        const fg = this.activeForge;
+        const item = fg.forgeStorage[slotIndex];
+        if (!item) return;
+        const emptyIdx = this.inventory.items.findIndex(s => !s);
+        if (emptyIdx < 0) {
+            this.game.onMessage('背包已满！');
+            return;
+        }
+        this.inventory.items[emptyIdx] = item;
+        fg.forgeStorage[slotIndex] = null;
+        this.inventory.notify();
+        this._renderForge();
+    }
+
+    _startForging() {
+        if (!this.activeForge) return;
+        const fg = this.activeForge;
+        const equipItem = fg.forgeStorage[0];
+        const stoneItem = fg.forgeStorage[1];
+        if (!equipItem || !stoneItem || stoneItem.amount <= 0) {
+            this.game.onMessage('需要放入木质装备和元素石！');
+            return;
+        }
+        if (fg.forgeStorage[2]) {
+            this.game.onMessage('请先取出锻造产物！');
+            return;
+        }
+        const targetId = FORGE_MAP[equipItem.id];
+        if (!targetId) {
+            this.game.onMessage('该物品无法锻造！');
+            return;
+        }
+        const targetDef = ITEMS[targetId];
+        if (!targetDef) {
+            this.game.onMessage('锻造目标物品不存在！');
+            return;
+        }
+        // 消耗1个元素石
+        stoneItem.amount -= 1;
+        if (stoneItem.amount <= 0) fg.forgeStorage[1] = null;
+        // 消耗木质装备
+        fg.forgeStorage[0] = null;
+        // 创建锻造后的物品，保留充能
+        const forged = { id: targetId, amount: 1, charge: equipItem.charge || 0 };
+        if (targetDef.maxUses) {
+            forged.uses = targetDef.maxUses;
+        }
+        // 放入产物槽
+        fg.forgeStorage[2] = forged;
+        this.game.onMessage(`锻造成功！${ITEMS[equipItem.id]?.name || equipItem.id} → ${targetDef.name}${forged.charge > 0 ? ' (充能+' + forged.charge + ')' : ''}${forged.uses ? ' (耐久:' + forged.uses + ')' : ''}`);
+        this._renderForge();
     }
 
     showMessage(text) {
@@ -1914,6 +2218,20 @@ class UI {
         if (!text) return;
 
         // 管理员指令处理
+        if (text.startsWith('/in ') && this.game.isAdmin) {
+            const num = parseInt(text.substring(4).trim());
+            const worldMap = { 0: 'normal', 1: 'stone', 2: 'gold' };
+            const worldNames = { 0: '主世界', 1: '石维度', 2: '金维度' };
+            if (num in worldMap) {
+                this.world.switchToWorld(worldMap[num], this.player.position);
+                this.player.position.set(0, 5, 0);
+                this.addChatMessage('系统', `已传送到${worldNames[num]}`);
+            } else {
+                this.addChatMessage('系统', '无效维度: 0=主世界 1=石维度 2=金维度');
+            }
+            return;
+        }
+
         if (text.startsWith('/give ') && this.game.isAdmin) {
             const parts = text.split(' ');
             // /give 谁 物品中文名 [数量]
@@ -1957,11 +2275,11 @@ class UI {
             return;
         }
 
-        // /k 传送指令
-        if (text.startsWith('/k ')) {
-            const name = text.substring(3).trim();
+        // *tp 传送指令（所有人可用）
+        if (text.startsWith('*tp ')) {
+            const name = text.substring(4).trim();
             if (!name) {
-                this.addChatMessage('系统', '请输入石碑名称: /k 石碑名称');
+                this.addChatMessage('系统', '请输入石碑名称: *tp 石碑名称');
                 return;
             }
             if (this._teleportToMonument(name)) {

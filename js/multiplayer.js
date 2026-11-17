@@ -4,7 +4,14 @@ const OFFICIAL_ROOMS = [
     { id: 'room_official', name: '官方房间', desc: '玩家唯一可以联机玩的地方' },
 ];
 
-const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+const MQTT_BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://public.mqtthq.com:8883/mqtt',
+];
+let MQTT_BROKER = MQTT_BROKERS[0];
+let _brokerIdx = 0;
 const MQTT_PREFIX = 'ws_mp_';
 
 // 共享几何体和材质，所有玩家模型复用
@@ -80,31 +87,46 @@ class MultiplayerSystem {
         this.roomTopic = MQTT_PREFIX + roomId;
         this.myTopic = this.roomTopic + '/' + this.username;
         this._reconnectAttempts = 0;
+        _brokerIdx = 0;
+        MQTT_BROKER = MQTT_BROKERS[0];
+        this._tryConnect();
+    }
+
+    _tryConnect() {
+        if (this.client) {
+            try { this.client.end(true); } catch(e) {}
+            this.client = null;
+        }
 
         try {
             this.client = mqtt.connect(MQTT_BROKER, {
                 clientId: 'ws_' + this.username + '_' + Math.random().toString(36).substr(2, 6),
                 clean: true,
-                connectTimeout: 8000,
+                connectTimeout: 6000,
                 keepalive: 20,
-                reconnectPeriod: 2000,
+                reconnectPeriod: 0,
             });
         } catch (e) {
             console.error('MQTT connect failed:', e);
-            this.game.onMessage('连接服务器失败');
-            return false;
+            this._tryNextBroker();
+            return;
         }
 
+        this._connectTimeout = setTimeout(() => {
+            if (!this.connected) {
+                console.warn('MQTT timeout, trying next broker');
+                this._tryNextBroker();
+            }
+        }, 7000);
+
         this.client.on('connect', () => {
+            if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
             this.connected = true;
             this._reconnectAttempts = 0;
             this.client.subscribe(this.roomTopic + '/+', { qos: 0 });
             this._sendRaw('j');
-            // 立即强制发送位置，让房间里已有玩家能看到自己
             setTimeout(() => this._sendPositionForce(), 200);
-            // 先从服务器加载建筑状态（离线持久化）
             this._loadBuildingsFromServer().then(() => {
-                // 再请求在线玩家同步最新状态
                 setTimeout(() => this.requestBuildSync(), 500);
             });
             this.game.onMessage('已连接到房间: ' + this.getRoomName());
@@ -122,9 +144,11 @@ class MultiplayerSystem {
         });
 
         this.client.on('close', () => {
+            if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
             if (this.connected) {
                 this.connected = false;
                 this.game.onMessage('连接断开，尝试重连...');
+                this._tryConnect();
             }
         });
 
@@ -133,12 +157,32 @@ class MultiplayerSystem {
             if (this._reconnectAttempts <= this._maxReconnectAttempts) {
                 this.game.onMessage('正在重连... (' + this._reconnectAttempts + '/' + this._maxReconnectAttempts + ')');
             } else {
+
                 this.game.onMessage('重连失败，请检查网络');
                 this.client.end();
             }
         });
 
         return true;
+    }
+
+    _tryNextBroker() {
+        if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
+        if (this.client) {
+            try { this.client.end(true); } catch(e) {}
+            this.client = null;
+        }
+        _brokerIdx++;
+        if (_brokerIdx >= MQTT_BROKERS.length) {
+            _brokerIdx = 0;
+            this.game.onMessage('所有服务器均无法连接，请稍后重试');
+            setTimeout(() => this._tryConnect(), 5000);
+            return;
+        }
+        MQTT_BROKER = MQTT_BROKERS[_brokerIdx];
+        console.log('Trying broker:', MQTT_BROKER);
+        this.game.onMessage('切换服务器中...');
+        this._tryConnect();
     }
 
     getRoomName() {
@@ -785,6 +829,9 @@ class MultiplayerSystem {
             } else if (bossType === 'gold_zombie') {
                 window.game.enemies._spawnGoldZombie(pos.x, pos.y, pos.z);
                 this.game.onMessage(username + ' 召唤了金僵尸!');
+            } else if (bossType === 'element_king') {
+                window.game.enemies._spawnElementKing(pos.x, pos.y, pos.z);
+                this.game.onMessage(username + ' 召唤了元素王!');
             }
         }
     }

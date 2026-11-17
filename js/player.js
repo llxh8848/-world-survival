@@ -44,7 +44,7 @@ class Player {
         document.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
             // 数字键切换快捷栏
-            if (e.code >= 'Digit1' && e.code <= 'Digit5') {
+            if (e.code >= 'Digit1' && e.code <= 'Digit9') {
                 this.inventory.selectSlot(parseInt(e.code.slice(-1)) - 1);
             }
         });
@@ -461,6 +461,33 @@ class Player {
         sAnkleR.position.set(0.2, 0.38, 0.05); sAnkleR.rotation.x = Math.PI / 2; group.add(sAnkleR);
         this.stoneArmorMeshes.feet = { mesh: sBootL, mat: sBootsMat, extras: [{ mesh: sBootR, mat: sBootsMat }, { mesh: sSoleL, mat: sSoleMat }, { mesh: sSoleR, mat: sSoleMat }, { mesh: sAnkleL, mat: sAnkleMatL }, { mesh: sAnkleR, mat: sAnkleMatR }] };
 
+        // 钓鱼竿模型
+        const rodMat = new THREE.MeshStandardMaterial({ color: 0x7d4a25, roughness: 0.6 });
+        const rodGeo = new THREE.CylinderGeometry(0.02, 0.04, 1.8, 6);
+        const rodMesh = new THREE.Mesh(rodGeo, rodMat);
+        rodMesh.position.set(0.45, 1.0, -0.3);
+        rodMesh.rotation.x = -0.4;
+        rodMesh.rotation.z = -0.2;
+        rodMesh.castShadow = true;
+        rodMesh.visible = false;
+        group.add(rodMesh);
+        // 鱼线
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.6 });
+        const lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0], 3));
+        const lineMesh = new THREE.Line(lineGeo, lineMat);
+        lineMesh.visible = false;
+        group.add(lineMesh);
+        // 鱼漂
+        const bobberMat = new THREE.MeshStandardMaterial({ color: 0xff4444, roughness: 0.4 });
+        const bobberGeo = new THREE.SphereGeometry(0.06, 8, 6);
+        const bobberMesh = new THREE.Mesh(bobberGeo, bobberMat);
+        bobberMesh.visible = false;
+        group.add(bobberMesh);
+        this.fishingRodMesh = rodMesh;
+        this.fishingLineMesh = lineMesh;
+        this.fishingBobberMesh = bobberMesh;
+
         group.visible = false;
         this.world.scene.add(group);
         this.playerModel = group;
@@ -471,6 +498,80 @@ class Player {
         this.playerModel.position.copy(this.position);
         this.playerModel.position.y -= 1.7;
         this.playerModel.rotation.y = this.yaw;
+
+        // 钓鱼动画
+        const armR = this.playerModel.children[7]; // armR is the 8th child (index 7)
+        const handR = this.playerModel.children[9]; // handR is the 10th child (index 9)
+        if (this.isFishing && this.fishingRodMesh) {
+            this.fishingRodMesh.visible = true;
+            this.fishingLineMesh.visible = true;
+            this.fishingBobberMesh.visible = true;
+            const t = this.fishingTimer || 0;
+            const phase = this.fishingPhase || 'waiting';
+
+            // 根据阶段设置动画参数
+            let armAngle = -1.2;
+            let rodAngle = -0.4;
+            let bobberOffset = 0;
+
+            if (phase === 'casting') {
+                // 抛竿：手臂从后向前甩
+                const p = this.fishingCastTimer / 0.6;
+                armAngle = -1.8 + p * 0.8;
+                rodAngle = -0.8 + p * 0.5;
+            } else if (phase === 'waiting') {
+                // 等待：轻微摆动
+                const swing = Math.sin(t * 2) * 0.08;
+                armAngle = -1.2 + swing;
+                rodAngle = -0.4 + swing * 0.5;
+                bobberOffset = Math.sin(t * 3) * 0.05;
+            } else if (phase === 'biting') {
+                // 咬钩：剧烈抖动
+                const shake = Math.sin(t * 30) * 0.15;
+                armAngle = -1.2 + shake;
+                rodAngle = -0.4 + shake * 0.8;
+                bobberOffset = Math.sin(t * 25) * 0.15 - 0.1;
+            } else if (phase === 'reeling') {
+                // 收竿：手臂向上向后拉
+                const p = this.fishingReelTimer / 0.4;
+                armAngle = -1.2 - p * 0.6;
+                rodAngle = -0.4 - p * 0.8;
+                bobberOffset = -p * 0.5;
+            }
+
+            if (armR) {
+                armR.rotation.x = armAngle;
+                armR.rotation.z = 0.3;
+            }
+            if (handR) {
+                handR.rotation.x = armAngle;
+                handR.position.set(0.45, 0.5, -0.2);
+            }
+            // 鱼竿随手臂角度
+            this.fishingRodMesh.rotation.x = rodAngle;
+            // 鱼竿尖端世界坐标
+            const rodTipLocal = new THREE.Vector3(0, 1.8, -0.3);
+            rodTipLocal.applyEuler(new THREE.Euler(rodAngle, 0, -0.2, 'YXZ'));
+            rodTipLocal.add(new THREE.Vector3(0.45, 1.0, -0.3));
+            // 鱼漂位置：前方水面
+            const dir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+            const bobberPos = new THREE.Vector3(0, -0.8, 0).add(dir.multiplyScalar(5));
+            // 更新鱼线
+            const linePos = this.fishingLineMesh.geometry.attributes.position;
+            linePos.setXYZ(0, rodTipLocal.x, rodTipLocal.y, rodTipLocal.z);
+            linePos.setXYZ(1, bobberPos.x, bobberPos.y + bobberOffset, bobberPos.z);
+            linePos.needsUpdate = true;
+            // 鱼漂位置
+            this.fishingBobberMesh.position.set(bobberPos.x, bobberPos.y + bobberOffset, bobberPos.z);
+        } else {
+            if (this.fishingRodMesh) this.fishingRodMesh.visible = false;
+            if (this.fishingLineMesh) this.fishingLineMesh.visible = false;
+            if (this.fishingBobberMesh) this.fishingBobberMesh.visible = false;
+            // 恢复手臂位置
+            if (armR) { armR.rotation.x = 0; armR.rotation.z = 0; }
+            if (handR) { handR.rotation.x = 0; handR.position.set(0.45, 0.5, 0); }
+        }
+
         // 更新盔甲显示
         if (this.armorMeshes) {
             const eq = this.inventory.equipment;
@@ -605,6 +706,10 @@ class Player {
                         this.inventory.addItem(id, amt);
                     }
                     window.game.onMessage(`采集获得: ${Object.entries(drops).map(([k,v]) => `${v}x${this._getItemInfo(k)?.name||k}`).join(', ')}`);
+                    // 成就：徒手砍树（没有工具时砍倒树）
+                    if (resource.group === 'tree' && !selectedItem) {
+                        if (window.game) window.game.updateAchievementProgress('bare_hands', 1);
+                    }
                 } else {
                     window.game.onMessage(`砍树中... ${resource.health}/${resource.maxHealth}`);
                 }
@@ -628,7 +733,7 @@ class Player {
                     const dir2D = new THREE.Vector3(dir.x, 0, dir.z).normalize();
                     if (dir2D.dot(toEnemy2D) > 0.3) {
                         // 斧头对树精/树士卫/假树无视防御值额外伤害
-                        if (selectedItem && (enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'tree_guardian' || enemy.enemyType === 'tree_guardian_enhanced' || enemy.enemyType === 'friendly_tree_guardian' || enemy.enemyType === 'fake_tree')) {
+                        if (selectedItem && (enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'tree_guardian' || enemy.enemyType === 'tree_guardian_enhanced' || enemy.enemyType === 'friendly_tree_guardian' || enemy.enemyType === 'fake_tree' || enemy.enemyType === 'activated_tree')) {
                             const axeBonus = { wood_axe: 5, stone_axe: 10, iron_axe: 20, steel_axe: 25, ultimate_axe: 40, certain_one: 40 }[selectedItem.id];
                             if (axeBonus) {
                                 enemy.health -= axeBonus;
@@ -661,6 +766,42 @@ class Player {
                             this._consumeDurabilityForSelected();
                         }
                         if (window.game && window.game.enemies) window.game.enemies._updateHealthBar(enemy);
+                    }
+                }
+            }
+        }
+
+        // 检测元素王炮石弹射物（可用镐子攻击2次破坏）
+        if (window.game.enemies && selectedItem) {
+            const isPickaxe = selectedItem.id === 'wood_pickaxe' || selectedItem.id === 'stone_pickaxe' || selectedItem.id === 'iron_pickaxe' || selectedItem.id === 'steel_pickaxe' || selectedItem.id === 'ultimate_pickaxe' || selectedItem.id === 'certain_one';
+            if (isPickaxe) {
+                for (const enemy of window.game.enemies.enemies) {
+                    if (enemy.dead || !enemy.projectiles) continue;
+                    for (let pi = enemy.projectiles.length - 1; pi >= 0; pi--) {
+                        const p = enemy.projectiles[pi];
+                        if (p.type !== 'cannon_stone') continue;
+                        const dx = this.position.x - p.mesh.position.x;
+                        const dz = this.position.z - p.mesh.position.z;
+                        const dy = this.position.y - p.mesh.position.y;
+                        const dist = Math.sqrt(dx * dx + dz * dz + dy * dy);
+                        if (dist < 3) {
+                            const toP = new THREE.Vector3(dx * -1, 0, dz * -1).normalize();
+                            const dir2D = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+                            if (dir2D.dot(toP) > 0.3) {
+                                p.hitCount = (p.hitCount || 0) + 1;
+                                if (p.hitCount >= 2) {
+                                    window.game.enemies.scene.remove(p.mesh);
+                                    p.mesh.geometry.dispose();
+                                    p.mat.dispose();
+                                    enemy.projectiles.splice(pi, 1);
+                                    if (window.game) window.game.onMessage('炮石被镐子击碎！');
+                                } else {
+                                    if (window.game) window.game.onMessage('炮石被击中！还需1次攻击');
+                                }
+                                this._consumeDurabilityForSelected();
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -702,6 +843,11 @@ class Player {
             if (window.game.multiplayer && window.game.multiplayer.connected) {
                 window.game.multiplayer.sendBuilding(selectedItem.id, pos.x, pos.y, pos.z, placeYaw);
             }
+            return;
+        }
+        // 鱼竿：右键水面钓鱼
+        if (info.fishing) {
+            this._startFishing(selectedItem);
             return;
         }
         // 可食用物品：右键使用
@@ -811,6 +957,12 @@ class Player {
             if (building && building.type === 'mystery_box') {
                 if (window.game && window.game.ui) {
                     window.game.ui.openMysteryBox(building);
+                }
+                return true;
+            }
+            if (building && building.type === 'forge') {
+                if (window.game && window.game.ui) {
+                    window.game.ui.openForge(building);
                 }
                 return true;
             }
@@ -1012,6 +1164,9 @@ class Player {
 
     update(dt) {
         if (!this.canMove) return;
+
+        // 钓鱼更新
+        this._updateFishing(dt);
 
         // 攻击冷却
         this.attackCooldown = Math.max(0, this.attackCooldown - dt);
@@ -1263,22 +1418,6 @@ class Player {
                     this.world.switchToWorld('stone', this.position);
                     this.position.set(0, 5, 0);
                     if (window.game) window.game.onMessage('进入了石头世界！');
-                } else if (this.world.worldType === 'gold') {
-                    // 从金维度返回之前的世界
-                    const returnWorld = this.world._goldReturnWorld || 'normal';
-                    const returnPos = this.world._goldReturnPosition || this.world.returnPosition;
-                    if (returnWorld === 'stone') {
-                        this.world.switchToWorld('stone', this.position);
-                        this.position.set(0, 5, 0);
-                    } else {
-                        this.world.switchToWorld('normal', this.position);
-                        if (returnPos) {
-                            this.position.set(returnPos.x, returnPos.y + 5, returnPos.z);
-                        } else {
-                            this.position.set(0, 5, 0);
-                        }
-                    }
-                    if (window.game) window.game.onMessage('离开了金维度');
                 } else {
                     const returnPos = this.world.returnPosition;
                     this.world.switchToWorld('normal', this.position);
@@ -1327,5 +1466,146 @@ class Player {
             }
         }
         this.survival.takeDamage(amount);
+    }
+
+    // ========== 钓鱼系统 ==========
+    _startFishing(rodItem) {
+        if (this.isFishing) {
+            window.game.onMessage('已经在钓鱼了！');
+            return;
+        }
+        // 检测前方是否是水面
+        const dir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+        const checkPos = this.position.clone().add(dir.multiplyScalar(5));
+        const groundHeight = this.world.getHeight(checkPos.x, checkPos.z);
+        // 水面高度约-0.8，河流区域高度-1.5
+        if (groundHeight > -0.5) {
+            window.game.onMessage('需要面对水面才能钓鱼！');
+            return;
+        }
+        this.isFishing = true;
+        this.fishingTimer = 0;
+        this.fishingRod = rodItem;
+        this.fishingWaitTime = 2 + Math.random() * 3; // 2-5秒等待
+        this.fishingPhase = 'casting'; // casting -> waiting -> biting -> reeling
+        this.fishingCastTimer = 0;
+        // 显示钓鱼提示
+        const hint = document.getElementById('fishingHint');
+        if (hint) {
+            hint.style.display = 'block';
+            hint.textContent = '🎣 抛竿中...';
+        }
+        window.game.onMessage('🎣 抛竿！等待鱼上钩...');
+    }
+
+    _updateFishing(dt) {
+        if (!this.isFishing) return;
+        this.fishingTimer += dt;
+        const hint = document.getElementById('fishingHint');
+
+        // 阶段1：抛竿动画 (0-0.6秒)
+        if (this.fishingPhase === 'casting') {
+            this.fishingCastTimer += dt;
+            if (hint) hint.textContent = '🎣 抛竿中...';
+            if (this.fishingCastTimer >= 0.6) {
+                this.fishingPhase = 'waiting';
+            }
+            return;
+        }
+
+        // 阶段2：等待鱼上钩
+        if (this.fishingPhase === 'waiting') {
+            if (this.fishingTimer < this.fishingWaitTime) {
+                if (hint) hint.textContent = '🎣 等待鱼上钩...';
+                return;
+            }
+            // 鱼咬钩了！
+            this.fishingPhase = 'biting';
+            this.fishingBiteTimer = 0;
+            if (hint) hint.textContent = '🎣 鱼上钩了！收竿！';
+            return;
+        }
+
+        // 阶段3：鱼咬钩挣扎 (0.5秒)
+        if (this.fishingPhase === 'biting') {
+            this.fishingBiteTimer += dt;
+            if (hint) hint.textContent = '🎣 鱼上钩了！收竿！';
+            if (this.fishingBiteTimer >= 0.5) {
+                this.fishingPhase = 'reeling';
+                this.fishingReelTimer = 0;
+            }
+            return;
+        }
+
+        // 阶段4：收竿动画 (0.4秒) 然后判定
+        if (this.fishingPhase === 'reeling') {
+            this.fishingReelTimer += dt;
+            if (hint) hint.textContent = '🎣 收竿中...';
+            if (this.fishingReelTimer >= 0.4) {
+                // 收竿完成，判定鱼获
+                this.isFishing = false;
+                this.fishingPhase = null;
+                if (hint) hint.style.display = 'none';
+                this._resolveFishingCatch();
+            }
+            return;
+        }
+    }
+
+    _resolveFishingCatch() {
+
+        // 钓鱼概率：62%鲤鱼, 13%金鱼, 5%钢, 2.1%黄金, 17.9%空军
+        const roll = Math.random();
+        let catchId = null;
+        let catchName = '';
+        if (roll < 0.62) {
+            catchId = 'carp';
+            catchName = '鲤鱼';
+        } else if (roll < 0.75) {
+            catchId = 'goldfish';
+            catchName = '金鱼';
+        } else if (roll < 0.80) {
+            catchId = 'steel';
+            catchName = '钢';
+        } else if (roll < 0.821) {
+            catchId = 'gold';
+            catchName = '黄金';
+        }
+        if (catchId) {
+            const remaining = this.inventory.addItem(catchId, 1);
+            if (remaining > 0) {
+                // 背包满了，没钓上来
+                window.game.onMessage('🎣 背包满了！无法获得钓到的物品！');
+                this.inventory.notify();
+                this.fishingRod = null;
+                return;
+            }
+            // 消耗鱼竿耐久
+            if (this.fishingRod && this.fishingRod.uses !== undefined) {
+                this.fishingRod.uses -= 1;
+                if (this.fishingRod.uses <= 0) {
+                    const idx = this.inventory.items.indexOf(this.fishingRod);
+                    if (idx >= 0) this.inventory.items[idx] = null;
+                    window.game.onMessage(`🎣 钓到了 ${catchName}！但鱼竿坏了！`);
+                } else {
+                    window.game.onMessage(`🎣 钓到了 ${catchName}！`);
+                }
+            } else {
+                window.game.onMessage(`🎣 钓到了 ${catchName}！`);
+            }
+            this.inventory.notify();
+        } else {
+            // 消耗鱼竿耐久
+            if (this.fishingRod && this.fishingRod.uses !== undefined) {
+                this.fishingRod.uses -= 1;
+                if (this.fishingRod.uses <= 0) {
+                    const idx = this.inventory.items.indexOf(this.fishingRod);
+                    if (idx >= 0) this.inventory.items[idx] = null;
+                }
+            }
+            window.game.onMessage('🎣 没有钓到鱼...空军了');
+            this.inventory.notify();
+        }
+        this.fishingRod = null;
     }
 }

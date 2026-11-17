@@ -1,5 +1,5 @@
 // Service Worker - 世界生存 PWA
-const CACHE_NAME = 'world-survival-v134';
+const CACHE_NAME = 'world-survival-v135';
 const ASSETS = [
     './',
     './index.html',

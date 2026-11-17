@@ -30,9 +30,24 @@ class SurvivalSystem {
         if (this._timer < 1) return;
         this._timer = 0;
 
-        // 护身符回血效果
+        // 护身符回血效果 + 耐久消耗
         if (this._talismans && this._talismans.length > 0) {
             for (const t of this._talismans) {
+                // 耐久消耗：每15秒消耗1点
+                if (t.def.maxDurability) {
+                    if (t.item.durability === undefined) t.item.durability = t.item.maxDurability || t.def.maxDurability;
+                    t.durabilityTimer = (t.durabilityTimer || 0) + 1;
+                    if (t.durabilityTimer >= 15) {
+                        t.durabilityTimer = 0;
+                        t.item.durability = Math.max(0, t.item.durability - 1);
+                        if (t.item.durability <= 0) {
+                            if (window.game) window.game.onMessage(`${t.def.name} 耐久耗尽，已失效！`);
+                            continue;
+                        }
+                    }
+                }
+                // 耐久为0时跳过效果
+                if (t.def.maxDurability && t.item.durability !== undefined && t.item.durability <= 0) continue;
                 if (t.def.heal_interval && t.def.heal_amount) {
                     t.timer += 1;
                     if (t.timer >= t.def.heal_interval) {
@@ -79,6 +94,8 @@ class SurvivalSystem {
     }
 
     takeDamage(amount) {
+        // 娱乐场中玩家无敌
+        if (window.game && window.game.isArcade) return;
         if (this.armor > 0) {
             this.accumulatedDamage += amount;
             if (this.accumulatedDamage > this.armor) {
@@ -122,16 +139,30 @@ class SurvivalSystem {
         if (items) {
             for (const item of items) {
                 if (item && ITEMS[item.id] && ITEMS[item.id].talisman) {
-                    this._talismans.push({ def: ITEMS[item.id], timer: 0, item: item });
-                    if (ITEMS[item.id].speed_bonus) {
+                    const def = ITEMS[item.id];
+                    if (item.durability === undefined && def.maxDurability) {
+                        item.durability = item.maxDurability || def.maxDurability;
+                    }
+                    this._talismans.push({ def: def, timer: 0, item: item, durabilityTimer: 0 });
+                    if (def.speed_bonus) {
                         const charge = item.charge || 0;
-                        this._speedBonus += ITEMS[item.id].speed_bonus + charge;
+                        this._speedBonus += def.speed_bonus + charge;
                     }
                 }
             }
         }
     }
     getSpeedBonus() {
-        return this._speedBonus || 0;
+        let bonus = 0;
+        if (this._talismans) {
+            for (const t of this._talismans) {
+                if (t.def.maxDurability && t.item.durability !== undefined && t.item.durability <= 0) continue;
+                if (t.def.speed_bonus) {
+                    const charge = t.item ? (t.item.charge || 0) : 0;
+                    bonus += t.def.speed_bonus + charge;
+                }
+            }
+        }
+        return bonus;
     }
 }

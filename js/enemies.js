@@ -2777,6 +2777,494 @@ class EnemySystem {
         this._createHealthBar(enemy);
     }
 
+    _spawnElementKing(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // 基座 - 巨大石台
+        const baseGeo = new THREE.CylinderGeometry(2.5, 3.0, 0.8, 16);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.85, flatShading: false, metalness: 0.15 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.4;
+        base.castShadow = true;
+        base.receiveShadow = true;
+        group.add(base);
+
+        // 身体 - 三元素融合巨像
+        const bodyGeo = new THREE.BoxGeometry(2.2, 3.0, 1.8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5a4a30, roughness: 0.7, flatShading: false, metalness: 0.2, emissive: 0x1a0a00, emissiveIntensity: 0.15 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 2.3;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // 木元素左臂 - 树枝手臂
+        const woodArmGeo = new THREE.CylinderGeometry(0.35, 0.25, 2.5, 10);
+        const woodArmMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.85, flatShading: false, metalness: 0.05 });
+        const woodArm = new THREE.Mesh(woodArmGeo, woodArmMat);
+        woodArm.position.set(-1.5, 2.5, 0);
+        woodArm.rotation.z = Math.PI / 5;
+        woodArm.castShadow = true;
+        group.add(woodArm);
+        // 木臂树叶
+        const woodLeaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 2), new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.7, flatShading: false }));
+        woodLeaf.position.set(-2.2, 3.5, 0);
+        woodLeaf.castShadow = true;
+        group.add(woodLeaf);
+
+        // 石元素右臂 - 巨大石臂
+        const stoneArmGeo = new THREE.BoxGeometry(0.7, 2.8, 0.7);
+        const stoneArmMat = new THREE.MeshStandardMaterial({ color: 0x5a5e64, roughness: 0.8, flatShading: false, metalness: 0.15 });
+        const stoneArm = new THREE.Mesh(stoneArmGeo, stoneArmMat);
+        stoneArm.position.set(1.5, 2.3, 0);
+        stoneArm.castShadow = true;
+        group.add(stoneArm);
+        // 石臂拳头
+        const stoneFist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 2), stoneArmMat);
+        stoneFist.position.set(1.5, 0.9, 0);
+        stoneFist.castShadow = true;
+        group.add(stoneFist);
+
+        // 金元素核心 - 胸口发光核心
+        const coreGeo = new THREE.SphereGeometry(0.4, 16, 12);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.8 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.set(0, 2.5, 0.95);
+        group.add(core);
+        const coreLight = new THREE.PointLight(0xffdd00, 3, 15);
+        coreLight.position.set(0, 2.5, 1);
+        group.add(coreLight);
+
+        // 头部 - 三元素王冠
+        const headGeo = new THREE.IcosahedronGeometry(0.8, 2);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x4a4030, roughness: 0.6, flatShading: false, metalness: 0.3, emissive: 0x221100, emissiveIntensity: 0.2 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 4.2;
+        head.castShadow = true;
+        group.add(head);
+
+        // 王冠 - 金色尖刺
+        const crownMat = new THREE.MeshStandardMaterial({ color: 0xffdd00, roughness: 0.2, metalness: 0.9, emissive: 0x442200, emissiveIntensity: 0.3 });
+        for (let i = 0; i < 5; i++) {
+            const ang = (i / 5) * Math.PI * 2;
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 6), crownMat);
+            spike.position.set(Math.cos(ang) * 0.5, 4.8, Math.sin(ang) * 0.5);
+            spike.castShadow = true;
+            group.add(spike);
+        }
+
+        // 眼睛 - 三色发光
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0x00ff44 }));
+        eyeL.position.set(-0.25, 4.3, 0.65);
+        group.add(eyeL);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff4400 }));
+        eyeR.position.set(0.25, 4.3, 0.65);
+        group.add(eyeR);
+        const eyeLight = new THREE.PointLight(0xff8800, 2, 8);
+        eyeLight.position.set(0, 4.3, 0.8);
+        group.add(eyeLight);
+
+        // 嘴 - 巨大裂缝
+        const mouthGeo = new THREE.BoxGeometry(0.4, 0.08, 0.02);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x0a0500 });
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, 3.9, 0.75);
+        group.add(mouth);
+
+        // 腿 - 粗壮石柱（不移动，仅装饰）
+        const legGeo = new THREE.BoxGeometry(0.7, 1.6, 0.7);
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.8, flatShading: false, metalness: 0.15 });
+        const legL = new THREE.Mesh(legGeo, legMat);
+        legL.position.set(-0.7, 0.8, 0);
+        legL.castShadow = true;
+        group.add(legL);
+        const legR = new THREE.Mesh(legGeo, legMat);
+        legR.position.set(0.7, 0.8, 0);
+        legR.castShadow = true;
+        group.add(legR);
+
+        this.scene.add(group);
+
+        const self = this;
+        const enemy = {
+            mesh: group,
+            health: 1500,
+            maxHealth: 1500,
+            speed: 0,
+            damage: 20,
+            attackRange: 4,
+            attackCooldown: 0,
+            dead: false,
+            state: 'idle',
+            bodyMat: bodyMat,
+            eyeMatL: eyeL.material,
+            eyeMatR: eyeR.material,
+            coreMat: coreMat,
+            hitFlash: 0,
+            enemyType: 'element_king',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            defense: 7,
+            phase: 1,
+            phase2Triggered: false,
+            phase3Triggered: false,
+            // Phase 1 timers
+            treeActivateTimer: 4 + Math.random() * 14,
+            woodBlockTimer: 5 + Math.random() * 3,
+            bossSkillTimer: 10,
+            // Phase 2 timers
+            cannonTimer: 10 + Math.random() * 7,
+            // Phase 3
+            damageCounter: 0,
+            // Track spawned monsters for phase 3
+            spawnedMonsterTypes: [],
+            projectiles: [],
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                const actualDamage = Math.max(1, amount - this.defense);
+                this.health -= actualDamage;
+                this.hitFlash = 0.2;
+                if (this.phase === 3) {
+                    this.damageCounter += actualDamage;
+                }
+                if (this.health <= 0 && !this.dead) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _updateElementKingAI(e, dt, playerPos) {
+        // 阶段切换
+        if (e.phase === 1 && !e.phase2Triggered && e.health <= 0) {
+            e.phase2Triggered = true;
+            e.phase = 2;
+            e.health = 2000;
+            e.maxHealth = 2000;
+            e.defense = 7;
+            e.damage = 35;
+            // 眼睛变色
+            e.eyeMatL.color.setHex(0xff8800);
+            e.eyeMatR.color.setHex(0xff8800);
+            e.coreMat.color.setHex(0xff6600);
+            if (window.game) window.game.onMessage('👑 元素王进入第2阶段！');
+        }
+        if (e.phase === 2 && !e.phase3Triggered && e.health <= 0) {
+            e.phase3Triggered = true;
+            e.phase = 3;
+            e.health = 3000;
+            e.maxHealth = 3000;
+            e.defense = 7;
+            e.damage = 45;
+            e.eyeMatL.color.setHex(0xff0000);
+            e.eyeMatR.color.setHex(0xff0000);
+            e.coreMat.color.setHex(0xff0000);
+            if (window.game) window.game.onMessage('👑 元素王进入最终阶段！');
+        }
+
+        // 受击闪烁
+        if (e.hitFlash > 0) {
+            e.hitFlash -= dt;
+            e.bodyMat.emissive.setHex(0x442200);
+            if (e.hitFlash <= 0) e.bodyMat.emissive.setHex(0x1a0a00);
+            this._updateHealthBar(e);
+        }
+
+        // 不移动 - 固定位置
+        // 朝向玩家
+        const dirToPlayer = playerPos.clone().sub(e.mesh.position);
+        dirToPlayer.y = 0;
+        e.mesh.rotation.y = Math.atan2(dirToPlayer.x, dirToPlayer.z);
+
+        // 更新弹射物
+        this._updateElementKingProjectiles(e, dt);
+
+        // 近战攻击
+        e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+        const distToPlayer = e.mesh.position.distanceTo(playerPos);
+        if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+            e.attackCooldown = 2.0;
+            this._bossDamagePlayers(e.damage, e);
+        }
+
+        // ===== Phase 1 技能 =====
+        if (e.phase >= 1) {
+            // 树精木球技能
+            e.bossSkillTimer -= dt;
+            if (e.bossSkillTimer <= 0) {
+                e.bossSkillTimer = 10;
+                for (let b = 0; b < 3; b++) {
+                    this._spawnWoodBall(e);
+                }
+            }
+
+            // 激活周围树木 (4-18s)
+            e.treeActivateTimer -= dt;
+            if (e.treeActivateTimer <= 0) {
+                e.treeActivateTimer = 4 + Math.random() * 14;
+                this._activateTreesAround(e, 50);
+            }
+
+            // 吐出木方块 (5-8s)
+            e.woodBlockTimer -= dt;
+            if (e.woodBlockTimer <= 0) {
+                e.woodBlockTimer = 5 + Math.random() * 3;
+                this._spawnWoodBlock(e, playerPos);
+            }
+        }
+
+        // ===== Phase 2 技能 =====
+        if (e.phase >= 2) {
+            // 石巨人石球技能
+            e.cannonTimer -= dt;
+            if (e.cannonTimer <= 0) {
+                e.cannonTimer = 10 + Math.random() * 7;
+                this._spawnCannonStone(e, playerPos);
+            }
+        }
+
+        // ===== Phase 3 技能 =====
+        if (e.phase >= 3) {
+            // 每4点玩家伤害召唤3个随机怪物
+            if (e.damageCounter >= 4) {
+                e.damageCounter -= 4;
+                this._summonRandomMonsters(e, 3);
+            }
+        }
+    }
+
+    _activateTreesAround(boss, radius) {
+        if (!this.world.trees) return;
+        const bx = boss.mesh.position.x;
+        const bz = boss.mesh.position.z;
+        let activated = 0;
+        for (const tree of this.world.trees) {
+            if (tree.activated || tree.dead) continue;
+            const dx = tree.position.x - bx;
+            const dz = tree.position.z - bz;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < radius) {
+                // 激活树为生物形态
+                tree.activated = true;
+                const tx = tree.position.x;
+                const tz = tree.position.z;
+                const ty = this.world.getHeight(tx, tz);
+                this._spawnActivatedTree(tx, ty, tz, boss);
+                activated++;
+            }
+        }
+        if (activated > 0 && window.game) {
+            window.game.onMessage(`🌳 元素王激活了${activated}棵树！`);
+        }
+    }
+
+    _spawnActivatedTree(x, y, z, boss) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 10);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.85, flatShading: false });
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 0.75;
+        trunk.castShadow = true;
+        group.add(trunk);
+
+        const leafGeo = new THREE.IcosahedronGeometry(0.8, 2);
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.7, flatShading: false });
+        const leaves = new THREE.Mesh(leafGeo, leafMat);
+        leaves.position.y = 1.8;
+        leaves.castShadow = true;
+        group.add(leaves);
+
+        const eyeGeo = new THREE.SphereGeometry(0.06, 8, 6);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.1, 1.0, 0.3);
+        group.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.1, 1.0, 0.3);
+        group.add(eyeR);
+
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            health: 50,
+            maxHealth: 50,
+            speed: 2.0,
+            damage: 50,
+            attackRange: 2.0,
+            attackCooldown: 0,
+            dead: false,
+            state: 'chase',
+            wanderDir: new THREE.Vector3(),
+            wanderTimer: 0,
+            bodyMat: trunkMat,
+            hitFlash: 0,
+            enemyType: 'activated_tree',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            defense: 0,
+            weakToAxe: true,
+            elementKingBoss: boss,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                // 斧头克制
+                const actualDamage = amount;
+                this.health -= actualDamage;
+                this.hitFlash = 0.2;
+                if (this.health <= 0) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                    // 元素王增益
+                    if (this.elementKingBoss && !this.elementKingBoss.dead) {
+                        this.elementKingBoss.damage += 3;
+                        const hpBonus = 10;
+                        if (this.elementKingBoss.health + hpBonus <= this.elementKingBoss.maxHealth) {
+                            this.elementKingBoss.health += hpBonus;
+                        }
+                    }
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnWoodBlock(boss, playerPos) {
+        const enemyPos = boss.mesh.position.clone();
+        enemyPos.y += 4.0; // 从嘴部位置
+        const dir = playerPos.clone().sub(enemyPos);
+        dir.normalize();
+
+        const blockGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+        const blockMat = new THREE.MeshStandardMaterial({ color: 0x6a4a20, roughness: 0.6, flatShading: false });
+        const block = new THREE.Mesh(blockGeo, blockMat);
+        block.position.copy(enemyPos);
+        block.castShadow = true;
+        this.scene.add(block);
+
+        boss.projectiles.push({
+            mesh: block,
+            velocity: dir.multiplyScalar(6),
+            damage: 55,
+            life: 8,
+            type: 'wood_block',
+            mat: blockMat,
+            geo: blockGeo,
+        });
+    }
+
+    _spawnCannonStone(boss, playerPos) {
+        const enemyPos = boss.mesh.position.clone();
+        enemyPos.y += 3.0;
+        const dir = playerPos.clone().sub(enemyPos);
+        dir.y = 0;
+        dir.normalize();
+
+        const stoneGeo = new THREE.DodecahedronGeometry(1.0, 1);
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6a6e74, roughness: 0.6, flatShading: false });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        stone.position.copy(enemyPos);
+        stone.castShadow = true;
+        this.scene.add(stone);
+
+        boss.projectiles.push({
+            mesh: stone,
+            velocity: dir.multiplyScalar(4),
+            damage: 90,
+            life: 10,
+            type: 'cannon_stone',
+            mat: stoneMat,
+            geo: stoneGeo,
+            hitCount: 0,
+            destructible: true,
+        });
+    }
+
+    _updateElementKingProjectiles(enemy, dt) {
+        if (!enemy.projectiles) return;
+        for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+            const p = enemy.projectiles[i];
+            p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+            p.life -= dt;
+
+            // 碰撞检测：玩家
+            const dist = p.mesh.position.distanceTo(this.player.position);
+            const hitRadius = p.type === 'wood_block' ? 1.2 : (p.type === 'cannon_stone' ? 1.5 : 0.8);
+            if (dist < hitRadius) {
+                this._bossDamagePlayers(p.damage, enemy);
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+                continue;
+            }
+
+            // 地面碰撞
+            const groundY = this.world.getHeight(p.mesh.position.x, p.mesh.position.z);
+            if (p.mesh.position.y < groundY) {
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+                continue;
+            }
+
+            if (p.life <= 0) {
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+            }
+        }
+    }
+
+    _summonRandomMonsters(boss, count) {
+        // 从之前召唤过的怪物类型中随机选择
+        const availableTypes = boss.spawnedMonsterTypes.length > 0 ? boss.spawnedMonsterTypes : ['tree_guardian', 'stone_monster'];
+        const pos = boss.mesh.position;
+        for (let i = 0; i < count; i++) {
+            const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 5 + Math.random() * 5;
+            const sx = pos.x + Math.cos(ang) * dist;
+            const sz = pos.z + Math.sin(ang) * dist;
+            const sy = this.world.getHeight(sx, sz);
+            switch (type) {
+                case 'tree_guardian':
+                case 'tree_guardian_enhanced':
+                    this._spawnTreeGuardian(sx, sy, sz);
+                    break;
+                case 'stone_monster':
+                    this._spawnStoneMonster(sx, sy, sz);
+                    break;
+                case 'stone_guardian':
+                    this._spawnStoneGuardian(sx, sy, sz);
+                    break;
+                case 'gold_monster':
+                    this._spawnGoldMonster(sx, sy, sz);
+                    break;
+                case 'zombie':
+                    this._spawnZombie(sx, sy, sz);
+                    break;
+                default:
+                    this._spawnTreeGuardian(sx, sy, sz);
+                    break;
+            }
+            if (!boss.spawnedMonsterTypes.includes(type)) {
+                boss.spawnedMonsterTypes.push(type);
+            }
+        }
+        if (window.game) window.game.onMessage('👑 元素王召唤了怪物！');
+    }
+
     _spawnEnhancedTreeGuardian(x, y, z) {
         this._spawnTreeGuardian(x, y, z);
         const e = this.enemies[this.enemies.length - 1];
@@ -3083,7 +3571,7 @@ class EnemySystem {
         if (this.world.worldType === 'gold') {
             // 清除非金维度敌人
             for (const e of this.enemies) {
-                if (!e.dead && e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') { e.dead = true; e.deathTimer = 2; }
+                if (!e.dead && e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit' && e.enemyType !== 'element_king' && e.enemyType !== 'activated_tree') { e.dead = true; e.deathTimer = 2; }
             }
             // 生成金之怪
             this.spawnTimer += dt;
@@ -3115,7 +3603,7 @@ class EnemySystem {
                     }
                     continue;
                 }
-                if (e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') {
+                if (e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit' && e.enemyType !== 'element_king' && e.enemyType !== 'activated_tree') {
                     // 清除非金维度敌人的死亡动画
                     e.deathTimer += dt;
                     if (e.deathTimer > 1.5) {
@@ -3223,11 +3711,39 @@ class EnemySystem {
                         }
                     }
                 }
+                // 元素王boss AI
+                if (e.enemyType === 'element_king' && !e.dead) {
+                    this._updateElementKingAI(e, dt, this.player.position);
+                    continue;
+                }
+                // 激活树AI - 追击玩家
+                if (e.enemyType === 'activated_tree' && !e.dead) {
+                    if (e.hitFlash > 0) {
+                        e.hitFlash -= dt;
+                        e.bodyMat.emissive.setHex(0x441100);
+                        if (e.hitFlash <= 0) e.bodyMat.emissive.setHex(0x000000);
+                        this._updateHealthBar(e);
+                    }
+                    e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+                    const pPos = this.player.position;
+                    const dToP = e.mesh.position.distanceTo(pPos);
+                    if (dToP < 20) {
+                        const dir = pPos.clone().sub(e.mesh.position);
+                        dir.y = 0;
+                        dir.normalize();
+                        e.mesh.position.x += dir.x * e.speed * dt;
+                        e.mesh.position.z += dir.z * e.speed * dt;
+                        e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                        if (dToP < e.attackRange && e.attackCooldown <= 0) {
+                            e.attackCooldown = 1.5;
+                            this._bossDamagePlayers(e.damage, e);
+                        }
+                    }
+                    continue;
+                }
             }
             return;
         }
-
-        // 普通世界：清除石头世界敌人
         for (const e of this.enemies) {
             if (!e.dead && (e.enemyType === 'stone_monster' || e.enemyType === 'petrified_human')) { e.dead = true; e.deathTimer = 2; }
         }
@@ -3651,7 +4167,7 @@ class EnemySystem {
         enemy.dropsAwarded = true;
 
         // Boss死亡同步到多人游戏
-        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_tree_spirit') {
+        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_tree_spirit' || enemy.enemyType === 'element_king') {
             if (window.game.multiplayer && window.game.multiplayer.connected) {
                 window.game.multiplayer.sendBossDeath(enemy.enemyType);
             }
@@ -3758,6 +4274,29 @@ class EnemySystem {
             if (Math.random() < 0.10) divineCount += 2;
             window.game.inventory.addItem('divine_wood', divineCount);
             window.game.onMessage(`击杀假树! 获得${divineCount}个神木`);
+        } else if (enemy.enemyType === 'element_king') {
+            let msg = '👑 击杀元素王!';
+            if (Math.random() < 0.82) {
+                window.game.inventory.addItem('element_wood', 1);
+                msg += ' 获得1个元素木';
+            }
+            if (Math.random() < 0.42) {
+                window.game.inventory.addItem('element_stone', 1);
+                msg += '，1个元素石';
+            }
+            if (Math.random() < 0.12) {
+                window.game.inventory.addItem('element_gold', 1);
+                msg += '，1个元素金';
+            }
+            window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'activated_tree') {
+            window.game.inventory.addItem('wood', 3);
+            let msg = '击杀激活树! 获得3个木材';
+            if (Math.random() < 0.50) {
+                window.game.inventory.addItem('rare_wood', 1);
+                msg += '，1个稀有木材';
+            }
+            window.game.onMessage(msg);
         } else {
             if (Math.random() < 0.5) window.game.inventory.addItem('meat_raw', 1);
             if (Math.random() < 0.0793) window.game.inventory.addItem('stone', 1);
@@ -3769,7 +4308,7 @@ class EnemySystem {
     clearAll() {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
-            if (e.enemyType === 'cow' || e.enemyType === 'friendly_tree_guardian' || e.enemyType === 'gold_zombie') continue;
+            if (e.enemyType === 'cow' || e.enemyType === 'friendly_tree_guardian' || e.enemyType === 'gold_zombie' || e.enemyType === 'element_king') continue;
             this.scene.remove(e.mesh);
             this.enemies.splice(i, 1);
         }

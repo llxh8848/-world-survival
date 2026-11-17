@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -23,7 +23,7 @@
             <div class="loading-bar"><div id="loadingFill"></div></div>
             <p id="loadingText">正在加载资源...</p>
         </div>
-        <div class="version-tag">石之维度</div>
+        <div class="version-tag">金光闪闪</div>
     </div>
 
     <!-- 登录界面 -->
@@ -39,7 +39,7 @@
             <div id="existingUsers" class="existing-users"></div>
             <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
         </div>
-        <div class="version-tag">石之维度</div>
+        <div class="version-tag">金光闪闪</div>
     </div>
 
     <!-- 主菜单 -->
@@ -62,7 +62,7 @@
             <button id="btnBackToLogin" class="btn-back">← 返回登录</button>
             <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
         </div>
-        <div class="version-tag">石之维度</div>
+        <div class="version-tag">金光闪闪</div>
     </div>
 
     <!-- 私人存档选择 -->
@@ -122,6 +122,10 @@
             <div id="chatMessages"></div>
             <input type="text" id="chatInput" placeholder="按T说话..." maxlength="100" autocomplete="off">
         </div>
+        <!-- 成就通知（右上角） -->
+        <div id="achievementNotify" style="display:none;position:fixed;top:15px;right:15px;z-index:1000;pointer-events:none;"></div>
+        <!-- 钓鱼提示 -->
+        <div id="fishingHint" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:#66ccff;padding:10px 20px;border-radius:8px;font-size:16px;z-index:999;pointer-events:none;"></div>
         <!-- 准星 -->
         <div id="crosshair">+</div>
 
@@ -167,6 +171,15 @@
             <div class="hotbar-slot" data-slot="6"><span class="slot-key">7</span><span class="slot-icon"></span><span class="slot-count"></span></div>
             <div class="hotbar-slot" data-slot="7"><span class="slot-key">8</span><span class="slot-icon"></span><span class="slot-count"></span></div>
             <div class="hotbar-slot" data-slot="8"><span class="slot-key">9</span><span class="slot-icon"></span><span class="slot-count"></span></div>
+        </div>
+
+        <!-- 渲染优化开关 -->
+        <div id="renderOptToggle">
+            <span class="render-opt-label">渲染优化</span>
+            <label class="render-opt-switch">
+                <input type="checkbox" id="renderOptCheckbox">
+                <span class="render-opt-slider"></span>
+            </label>
         </div>
 
         <!-- 交互提示 -->
@@ -382,22 +395,60 @@
         </div>
     </div>
 
+    <!-- 锻造台界面 -->
+    <div id="forgeUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>⚒️ 锻造台</h2>
+            <button class="btn-close" id="btnForgeClose">✕</button>
+        </div>
+        <p class="miner-help">放入木质装备和元素石，点击开始锻造。每1个元素石=锻造1次</p>
+        <div style="display:flex;gap:16px;padding:10px 5px;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+                <div style="color:#8b5a2b;font-size:14px;margin-bottom:5px;">木质装备</div>
+                <div id="forgeEquipSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+            <div style="font-size:20px;color:#66aaff;">+</div>
+            <div style="text-align:center;">
+                <div style="color:#66aaff;font-size:14px;margin-bottom:5px;">元素石</div>
+                <div id="forgeStoneSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+            <div style="font-size:20px;color:#ffaa44;">➜</div>
+            <div style="text-align:center;">
+                <div style="color:#ffaa44;font-size:14px;margin-bottom:5px;">锻造产物</div>
+                <div id="forgeResultSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+        </div>
+        <div style="text-align:center;margin:10px 0;">
+            <button id="btnForgeStart" style="padding:8px 24px;font-size:16px;border:none;border-radius:6px;background:#66aaff;color:#222;cursor:pointer;" disabled>开始锻造</button>
+        </div>
+        <div style="border-top:1px solid #444;margin-top:8px;padding-top:8px;">
+            <div style="color:#aaa;font-size:13px;margin-bottom:5px;">背包中的木质装备和元素石：</div>
+            <div id="forgeInventoryGrid" style="display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow-y:auto;"></div>
+        </div>
+    </div>
+
     <!-- 黄金祭坛界面 -->
     <div id="goldAltarUI" class="game-panel" style="display:none">
         <div class="panel-header">
             <h2>🌟 黄金祭坛</h2>
             <button class="btn-close" data-close="goldAltarUI">✕</button>
         </div>
-        <p class="miner-help">放入1个穿越器和5个石头，献祭后传送到金维度！</p>
-        <div class="miner-layout">
-            <div>
-                <h3>背包</h3>
-                <div id="goldAltarInventoryGrid" class="miner-inventory-grid"></div>
+        <div class="gold-altar-sections">
+            <div class="gold-altar-section">
+                <h3>🌀 传送至金维度</h3>
+                <p class="gold-altar-hint">放入3个黄金 + 1个金矿</p>
+                <div id="goldAltarTeleportGrid" class="gold-altar-grid"></div>
             </div>
-            <div>
-                <h3>祭坛 (2格)</h3>
-                <div id="goldAltarStorageGrid" class="miner-grid"></div>
+            <div class="gold-altar-divider"></div>
+            <div class="gold-altar-section">
+                <h3>👑 召唤元素王</h3>
+                <p class="gold-altar-hint">放入1个高级木材 + 1个石之心 + 1个神木</p>
+                <div id="goldAltarBossGrid" class="gold-altar-grid"></div>
             </div>
+        </div>
+        <div class="gold-altar-inv-section">
+            <h3>背包</h3>
+            <div id="goldAltarInventoryGrid" class="miner-inventory-grid"></div>
         </div>
     </div>
 

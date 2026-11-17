@@ -20,8 +20,8 @@ const ITEMS = {
     stone_sword: { name: '石剑', icon: '⚔️', stackable: false, weapon: true, damage: 3, attack_bonus: 4, maxUses: 120 },
     iron_sword:  { name: '铁剑', icon: '⚔️', stackable: false, weapon: true, damage: 3, attack_bonus: 7, maxUses: 240 },
     torch:       { name: '火把',    icon: '🔥', stackable: true, maxStack: 10, light: true, placeable: true },
-    wall_wood:   { name: '木墙',    icon: '🧱', stackable: true, maxStack: 50, placeable: true },
-    wall_stone:  { name: '石墙',    icon: '🧱', stackable: true, maxStack: 50, placeable: true },
+    wall_wood:   { name: '木砖块',    icon: '🧱', stackable: true, maxStack: 50, placeable: true },
+    wall_stone:  { name: '石砖块',    icon: '🧱', stackable: true, maxStack: 50, placeable: true },
     campfire:    { name: '篝火',    icon: '🔥', stackable: true, maxStack: 10, placeable: true },
     knowledge_bookshelf: { name: '知识书架', icon: '📚', stackable: true, maxStack: 10, placeable: true, crafting_station: true },
     auto_miner: { name: '自动挖矿器', icon: '⛏️', stackable: true, maxStack: 10, placeable: true },
@@ -51,11 +51,11 @@ const ITEMS = {
     ultimate_axe:     { name: '最终木斧', icon: '🪓', stackable: false, tool: true, chopping_power: 4, attack_bonus: 5, maxUses: 600 },
     ultimate_bookshelf: { name: '最终书架', icon: '📚', stackable: true, maxStack: 10, placeable: true },
     fiber:            { name: '纤维', icon: '🧵', stackable: true, maxStack: 99 },
-    wooden_healing_talisman: { name: '木质回血符', icon: '🔮', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, heal_interval: 15, heal_amount: 20 },
+    wooden_healing_talisman: { name: '木质回血符', icon: '🔮', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, heal_interval: 15, heal_amount: 20, maxDurability: 100 },
     portal:            { name: '穿越器', icon: '', stackable: true, maxStack: 10, placeable: true },
     slotted_stone:     { name: '切槽石头', icon: '', stackable: true, maxStack: 99 },
     petrification_item:{ name: '石化道具', icon: '', stackable: true, maxStack: 99 },
-    wooden_speed_talisman: { name: '木质速度符', icon: '', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, speed_bonus: 3 },
+    wooden_speed_talisman: { name: '木质速度符', icon: '', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, speed_bonus: 3, maxDurability: 100 },
     stone_helmet:     { name: '石头盔', icon: '', stackable: false, equipable: true, equip_slot: 'head', armor: 2 },
     stone_chestplate: { name: '石胸甲', icon: '', stackable: false, equipable: true, equip_slot: 'chest', armor: 4 },
     stone_leggings:   { name: '石护腿', icon: '', stackable: false, equipable: true, equip_slot: 'legs', armor: 2.5 },
@@ -75,7 +75,34 @@ const ITEMS = {
     mystery_box:      { name: '神秘盒', icon: '', stackable: true, maxStack: 10, placeable: true },
     gold_altar:       { name: '黄金祭坛', icon: '', stackable: true, maxStack: 10, placeable: true },
     cactus:           { name: '仙人掌', icon: '🌵', stackable: true, maxStack: 99, hunger: 5, thirst: 15 },
-    cactus_thorn_talisman: { name: '仙人掌反甲符', icon: '🌵', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, thorn_chance: 0.5, thorn_damage: 3 },
+    cactus_thorn_talisman: { name: '仙人掌反甲符', icon: '🌵', stackable: false, equipable: true, equip_slot: 'talisman', talisman: true, thorn_chance: 0.5, thorn_damage: 3, maxDurability: 100 },
+    element_wood:      { name: '元素木', icon: '🌿', stackable: true, maxStack: 99 },
+    element_stone:     { name: '元素石', icon: '💠', stackable: true, maxStack: 99 },
+    element_gold:      { name: '元素金', icon: '✨', stackable: true, maxStack: 99 },
+    hard_stone_helmet:     { name: '坚硬的石头盔', icon: '🪖', stackable: false, equipable: true, equip_slot: 'head', armor: 2.5 },
+    hard_stone_chestplate: { name: '坚硬的石胸甲', icon: '🦺', stackable: false, equipable: true, equip_slot: 'chest', armor: 5 },
+    hard_stone_leggings:   { name: '坚硬的石护腿', icon: '👖', stackable: false, equipable: true, equip_slot: 'legs', armor: 3.5 },
+    hard_stone_boots:      { name: '坚硬的石靴', icon: '🥾', stackable: false, equipable: true, equip_slot: 'feet', armor: 1.5 },
+    ultimate_stone_sword:  { name: '最终石剑', icon: '⚔️', stackable: false, weapon: true, damage: 3, attack_bonus: 14, maxUses: 1200 },
+    ultimate_stone_pickaxe:{ name: '最终石镐', icon: '⛏️', stackable: false, tool: true, mining_power: 5, miner_reduction: 50, maxUses: 1200 },
+    ultimate_stone_axe:    { name: '最终石斧', icon: '🪓', stackable: false, tool: true, chopping_power: 5, attack_bonus: 8, maxUses: 1200 },
+    fishing_rod:  { name: '鱼竿', icon: '🎣', stackable: false, tool: true, fishing: true, maxUses: 200 },
+    carp:         { name: '鲤鱼', icon: '🐟', stackable: true, maxStack: 99, hunger: 20, thirst: 15 },
+    goldfish:     { name: '金鱼', icon: '🐠', stackable: true, maxStack: 99, hunger: 70, thirst: 30 },
+    // 洞穴系统物品
+    cold_iron:    { name: '寒铁', icon: '⛓️', stackable: true, maxStack: 99 },
+    diamond:      { name: '钻石', icon: '💎', stackable: true, maxStack: 99 },
+    redstone:     { name: '红石', icon: '🔴', stackable: true, maxStack: 99 },
+    fossil:       { name: '化石', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><rect x="7" y="9" width="10" height="6" rx="2" fill="#c8b8a0" stroke="#5a4a3a" stroke-width="1.5"/><circle cx="7" cy="9" r="3" fill="#c8b8a0" stroke="#5a4a3a" stroke-width="1.5"/><circle cx="17" cy="9" r="3" fill="#c8b8a0" stroke="#5a4a3a" stroke-width="1.5"/><circle cx="7" cy="15" r="3" fill="#c8b8a0" stroke="#5a4a3a" stroke-width="1.5"/><circle cx="17" cy="15" r="3" fill="#c8b8a0" stroke="#5a4a3a" stroke-width="1.5"/></svg>', stackable: true, maxStack: 99 },
+    spider_silk:  { name: '蛛丝', icon: '🕸️', stackable: true, maxStack: 99 },
+    poison:       { name: '毒液', icon: '🧪', stackable: true, maxStack: 99 },
+    bone:         { name: '骨头', icon: '🦴', stackable: true, maxStack: 99 },
+    arrow:        { name: '箭矢', icon: '🏹', stackable: true, maxStack: 99 },
+    slime_ball:   { name: '粘液球', icon: '🟢', stackable: true, maxStack: 99 },
+    cave_key:     { name: '洞穴钥匙', icon: '🔑', stackable: true, maxStack: 10 },
+    cave_ladder:  { name: '爬梯', icon: '🪜', stackable: true, maxStack: 10, placeable: true },
+    diamond_sword:{ name: '钻石剑', icon: '⚔️', stackable: false, weapon: true, damage: 3, attack_bonus: 25, maxUses: 800 },
+    diamond_pickaxe:{ name: '钻石镐', icon: '⛏️', stackable: false, tool: true, mining_power: 8, maxUses: 800 },
 };
 
 // 可充能的木质装备列表
@@ -84,8 +111,39 @@ const CHARGEABLE_WOOD_ITEMS = [
     'wood_helmet', 'wood_chestplate', 'wood_leggings', 'wood_boots',
     'hard_wood_helmet', 'hard_wood_chestplate', 'hard_wood_leggings', 'hard_wood_boots',
     'ultimate_sword', 'ultimate_pickaxe', 'ultimate_axe',
-    'wooden_healing_talisman', 'wooden_speed_talisman',
+    'wooden_healing_talisman', 'wooden_speed_talisman', 'cactus_thorn_talisman',
 ];
+
+// 可用元素木增加耐久的护身符列表
+const TALISMAN_ITEMS = [
+    'wooden_healing_talisman', 'wooden_speed_talisman', 'cactus_thorn_talisman',
+];
+
+// 可锻造的木质物品列表（不含护身符）
+const FORGEABLE_WOOD_ITEMS = [
+    'wood_sword', 'wood_axe', 'wood_pickaxe',
+    'wood_helmet', 'wood_chestplate', 'wood_leggings', 'wood_boots',
+    'hard_wood_helmet', 'hard_wood_chestplate', 'hard_wood_leggings', 'hard_wood_boots',
+    'ultimate_sword', 'ultimate_pickaxe', 'ultimate_axe',
+];
+
+// 锻造映射表：木质物品 → 石质物品
+const FORGE_MAP = {
+    wood_sword: 'stone_sword',
+    wood_axe: 'stone_axe',
+    wood_pickaxe: 'stone_pickaxe',
+    wood_helmet: 'stone_helmet',
+    wood_chestplate: 'stone_chestplate',
+    wood_leggings: 'stone_leggings',
+    wood_boots: 'stone_boots',
+    hard_wood_helmet: 'hard_stone_helmet',
+    hard_wood_chestplate: 'hard_stone_chestplate',
+    hard_wood_leggings: 'hard_stone_leggings',
+    hard_wood_boots: 'hard_stone_boots',
+    ultimate_sword: 'ultimate_stone_sword',
+    ultimate_pickaxe: 'ultimate_stone_pickaxe',
+    ultimate_axe: 'ultimate_stone_axe',
+};
 
 // 金平可充能的物品列表（食物/围墙/箱子/挖矿器）
 const CHARGEABLE_GOLD_PAN_ITEMS = [
@@ -94,6 +152,34 @@ const CHARGEABLE_GOLD_PAN_ITEMS = [
     'chest',
     'auto_miner',
 ];
+
+// 成就定义
+const ACHIEVEMENTS = {
+    bare_hands: {
+        id: 'bare_hands',
+        name: '你手真硬',
+        desc: '用手砍8个树（不装备任何斧头）',
+        target: 8,
+    },
+    knowledge: {
+        id: 'knowledge',
+        name: '学习知识',
+        desc: '合成并放置一个知识书架',
+        target: 1,
+    },
+    auto_miner: {
+        id: 'auto_miner',
+        name: '自动的奴隶！',
+        desc: '合成1个自动挖矿器',
+        target: 1,
+    },
+    bare_hands_35: {
+        id: 'bare_hands_35',
+        name: '寸树不生',
+        desc: '徒手挖35颗树',
+        target: 35,
+    },
+};
 
 // 合成配方
 const RECIPES = {
@@ -109,8 +195,10 @@ const RECIPES = {
     wood_sword:  { name: '木剑', ingredients: { wood: 4, willow: 1 }, output: 'wood_sword', count: 1, cat: 'weapon', requires_bookshelf: true },
     stone_sword: { name: '石剑', ingredients: { stone: 2, willow: 1, wood: 2 }, output: 'stone_sword', count: 1, cat: 'weapon', requires_bookshelf: true },
     iron_sword:  { name: '铁剑', ingredients: { iron_ingot: 2, willow: 1, wood: 2 }, output: 'iron_sword', count: 1, cat: 'weapon', requires_bookshelf: true },
-    wall_wood:  { name: '木墙', ingredients: { wood: 4 }, output: 'wall_wood', count: 2, cat: 'building', requires_bookshelf: true },
-    wall_stone: { name: '石墙', ingredients: { stone: 4 }, output: 'wall_stone', count: 2, cat: 'building', requires_bookshelf: true },
+    diamond_sword: { name: '钻石剑', ingredients: { diamond: 3, iron_ingot: 2, willow: 2 }, output: 'diamond_sword', count: 1, cat: 'weapon', requires_bookshelf: true, requires_forge: true },
+    diamond_pickaxe: { name: '钻石镐', ingredients: { diamond: 3, iron_ingot: 3, willow: 2, wood: 2 }, output: 'diamond_pickaxe', count: 1, cat: 'tool', requires_bookshelf: true, requires_forge: true },
+    wall_wood:  { name: '木砖块', ingredients: { wood: 2 }, output: 'wall_wood', count: 4, cat: 'building', requires_bookshelf: true },
+    wall_stone: { name: '石砖块', ingredients: { stone: 2 }, output: 'wall_stone', count: 4, cat: 'building', requires_bookshelf: true },
     campfire:   { name: '篝火', ingredients: { wood: 5, stone: 3 }, output: 'campfire', count: 1, cat: 'building', requires_bookshelf: true },
     iron_ingot: { name: '铁锭', ingredients: { iron_ore: 1 }, output: 'iron_ingot', count: 1, cat: 'material', requires_campfire: true, requires_bookshelf: true },
     meat_cooked:{ name: '熟肉', ingredients: { meat_raw: 1, wood: 1 }, output: 'meat_cooked', count: 1, cat: 'consumable', requires_campfire: true, requires_bookshelf: true },
@@ -150,5 +238,6 @@ const RECIPES = {
     mystery_box:     { name: '神秘盒', ingredients: { heart_of_stone: 5, wood: 8, gold_ore: 1 }, output: 'mystery_box', count: 1, cat: 'building', requires_bookshelf: true },
     gold:            { name: '黄金', ingredients: { rare_wood: 1 }, output: 'gold', count: 1, cat: 'material', requires_campfire: true, requires_bookshelf: true },
     gold_altar:      { name: '黄金祭坛', ingredients: { gold: 10, stone: 20, normal_altar: 1 }, output: 'gold_altar', count: 1, cat: 'building', requires_bookshelf: true, requires_forge: true },
-    cactus_thorn_talisman: { name: '仙人掌反甲符', ingredients: { stone: 5, cactus: 7, wood: 3 }, output: 'cactus_thorn_talisman', count: 1, cat: 'equipment', requires_bookshelf: true },
+    cactus_thorn_talisman: { name: '仙人掌反甲符', ingredients: { stone: 5, cactus: 7, wood: 3 }, output: 'cactus_thorn_talisman', count: 1, cat: 'equipment', requires_ultimate_bookshelf: true },
+    fishing_rod:    { name: '鱼竿', ingredients: { wood: 3, willow: 3 }, output: 'fishing_rod', count: 1, cat: 'tool', requires_bookshelf: true },
 };

@@ -41,6 +41,15 @@ class SaveSystem {
         if (password) this.setPassword(username, password);
     }
 
+    // ===== 设备绑定：一台电脑只能登录一个账号 =====
+    static getDeviceUser() {
+        return localStorage.getItem('ws_device_user');
+    }
+
+    static bindDeviceUser(username) {
+        localStorage.setItem('ws_device_user', username);
+    }
+
     static deleteUser(username) {
         const list = this.getUserList().filter(u => u !== username);
         this._saveUserList(list);
@@ -49,6 +58,10 @@ class SaveSystem {
             localStorage.removeItem(this.getSlotSaveKey(username, i));
         }
         localStorage.removeItem(this._getPasswordKey(username));
+        // 删除的是本机绑定账号时解除绑定，避免机器被锁死
+        if (this.getDeviceUser() === username) {
+            localStorage.removeItem('ws_device_user');
+        }
     }
 
     static getSaveKey(username) {
@@ -94,6 +107,8 @@ class SaveSystem {
             buildings: this._serializeBuildings(normalBldgs),
             stoneBuildings: this._serializeBuildings(stoneBldgs),
             goldBuildings: this._serializeBuildings(goldBldgs),
+            achievements: game.achievements || {},
+            achievementProgress: game.achievementProgress || {},
         };
         try {
             localStorage.setItem(this.getSlotSaveKey(username, slot), JSON.stringify(data));
@@ -142,8 +157,8 @@ class SaveSystem {
         return this._applyData(data, game);
     }
 
-    static getMpSaveKey(username) {
-        return 'ws_mpsave_' + username;
+    static getMpSaveKey(username, roomId) {
+        return 'ws_mpsave_' + (roomId || 'unknown') + '_' + username;
     }
 
     static _serializeBuildings(buildings) {
@@ -160,14 +175,18 @@ class SaveSystem {
             monumentName: b.monumentName || null,
             mysteryBoxStorage: b.mysteryBoxStorage || null,
             goldAltarStorage: b.goldAltarStorage || null,
+            forgeStorage: b.forgeStorage || null,
         }));
     }
 
-    static saveMultiplayer(username, game) {
+    static saveMultiplayer(username, roomId, game) {
         if (!username || !game) return;
         const normalBldgs = game.world.worldType === 'normal' ? game.world.buildings : (game.world._normalBuildings || []);
         const stoneBldgs = game.world.worldType === 'stone' ? game.world.buildings : (game.world._stoneBuildings || []);
         const goldBldgs = game.world.worldType === 'gold' ? game.world.buildings : (game.world._goldBuildings || []);
+        const stoneCaveEnt = (game.world.worldType === 'stone')
+            ? (game.world.getCaveEntrances ? game.world.getCaveEntrances() : (game.world._stoneCaveEntrances || []))
+            : (game.world._stoneCaveEntrances || []);
         const data = {
             version: 1,
             timestamp: Date.now(),
@@ -195,28 +214,31 @@ class SaveSystem {
             buildings: this._serializeBuildings(normalBldgs),
             stoneBuildings: this._serializeBuildings(stoneBldgs),
             goldBuildings: this._serializeBuildings(goldBldgs),
+            stoneCaveEntrances: stoneCaveEnt,
+            achievements: game.achievements || {},
+            achievementProgress: game.achievementProgress || {},
         };
         try {
-            localStorage.setItem(this.getMpSaveKey(username), JSON.stringify(data));
+            localStorage.setItem(this.getMpSaveKey(username, roomId), JSON.stringify(data));
         } catch (e) {
             console.error('MP save failed:', e);
         }
     }
 
-    static loadMultiplayer(username) {
+    static loadMultiplayer(username, roomId) {
         try {
-            const raw = localStorage.getItem(this.getMpSaveKey(username));
+            const raw = localStorage.getItem(this.getMpSaveKey(username, roomId));
             if (!raw) return null;
             return JSON.parse(raw);
         } catch { return null; }
     }
 
-    static hasMpSave(username) {
-        return localStorage.getItem(this.getMpSaveKey(username)) !== null;
+    static hasMpSave(username, roomId) {
+        return localStorage.getItem(this.getMpSaveKey(username, roomId)) !== null;
     }
 
-    static applyMpSave(username, game) {
-        const data = this.loadMultiplayer(username);
+    static applyMpSave(username, roomId, game) {
+        const data = this.loadMultiplayer(username, roomId);
         if (!data) return false;
         // 复用 applySave 的逻辑
         return this._applyData(data, game);
@@ -272,6 +294,14 @@ class SaveSystem {
             game.world.currentHour = data.world.currentHour || 8.0;
         }
 
+        // 成就
+        if (data.achievements) {
+            game.achievements = data.achievements;
+        }
+        if (data.achievementProgress) {
+            game.achievementProgress = data.achievementProgress;
+        }
+
         // 恢复建筑：先清除现有建筑，再从存档恢复
         for (const b of game.world.buildings) {
             game.scene.remove(b.mesh);
@@ -291,6 +321,7 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
         }
 
@@ -311,6 +342,7 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
             game.world._stoneBuildings = game.world.buildings.splice(normalBldgCount);
             game.world._stoneCampfires = game.world.campfires.splice(normalCfCount);
@@ -336,12 +368,20 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
             game.world._goldBuildings = game.world.buildings.splice(normalBldgCount2);
             game.world._goldCampfires = game.world.campfires.splice(normalCfCount2);
             for (const b of game.world._goldBuildings) {
                 game.scene.remove(b.mesh);
             }
+        }
+
+        // 恢复石维度矿洞入口位置（供后续进入石维度或切换时使用）
+        if (data.stoneCaveEntrances && Array.isArray(data.stoneCaveEntrances)) {
+            game.world._stoneCaveEntrances = data.stoneCaveEntrances;
+        } else {
+            game.world._stoneCaveEntrances = game.world._stoneCaveEntrances || null;
         }
 
         // 恢复维度：如果存档时在石头世界，切换到石头世界
@@ -368,6 +408,11 @@ class SaveSystem {
             }
         }
 
+        // 兜底：若当前已在石维度且有暂存入口，立即恢复（确保单人/多人切换后可见）
+        if (game.world.worldType === 'stone' && game.world._stoneCaveEntrances && game.world.restoreCaveEntrances) {
+            try { game.world.restoreCaveEntrances(game.world._stoneCaveEntrances); } catch (e) {}
+        }
+
         return true;
     }
 
@@ -376,6 +421,9 @@ class SaveSystem {
         const normalBldgs = game.world.worldType === 'normal' ? game.world.buildings : (game.world._normalBuildings || []);
         const stoneBldgs = game.world.worldType === 'stone' ? game.world.buildings : (game.world._stoneBuildings || []);
         const goldBldgs = game.world.worldType === 'gold' ? game.world.buildings : (game.world._goldBuildings || []);
+        const stoneCaveEnt = (game.world.worldType === 'stone')
+            ? (game.world.getCaveEntrances ? game.world.getCaveEntrances() : (game.world._stoneCaveEntrances || []))
+            : (game.world._stoneCaveEntrances || []);
         const data = {
             version: 1,
             timestamp: Date.now(),
@@ -403,6 +451,7 @@ class SaveSystem {
             buildings: this._serializeBuildings(normalBldgs),
             stoneBuildings: this._serializeBuildings(stoneBldgs),
             goldBuildings: this._serializeBuildings(goldBldgs),
+            stoneCaveEntrances: stoneCaveEnt,
         };
         try {
             localStorage.setItem(this.getSaveKey(username), JSON.stringify(data));
@@ -436,5 +485,58 @@ class SaveSystem {
         const data = this.load(username);
         if (!data) return false;
         return this._applyData(data, game);
+    }
+
+    // ===== 娱乐室（Arcade）存档 =====
+    static getArcadeSaveKey(username) {
+        return 'ws_arcade_save_' + username;
+    }
+
+    static saveArcade(username, game) {
+        if (!username || !game) return;
+        const data = {
+            version: 1,
+            timestamp: Date.now(),
+            berryUpgrades: game.berryUpgrades || { wood_sword: 0, wood_pickaxe: 0, efficiency: 1, collectCount: 0, randomizerCount: 0 },
+            inventory: game.inventory.items.map(item => item ? { id: item.id, amount: item.amount, charge: item.charge || 0, uses: item.uses || 0 } : null),
+            arcadeZombie: game.arcadeZombie || { active: false, score: 0, leaderboard: [] },
+        };
+        try {
+            localStorage.setItem(this.getArcadeSaveKey(username), JSON.stringify(data));
+        } catch (e) {
+            console.error('Arcade save failed:', e);
+        }
+    }
+
+    static hasArcadeSave(username) {
+        return localStorage.getItem(this.getArcadeSaveKey(username)) !== null;
+    }
+
+    static loadArcadeSave(username) {
+        try {
+            const raw = localStorage.getItem(this.getArcadeSaveKey(username));
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch { return null; }
+    }
+
+    static applyArcadeSave(username, game) {
+        const data = this.loadArcadeSave(username);
+        if (!data) return false;
+        if (data.berryUpgrades) {
+            game.berryUpgrades = { ...data.berryUpgrades };
+        }
+        if (data.inventory) {
+            const size = game.inventory.size || game.inventory.items.length;
+            for (let i = 0; i < size && i < data.inventory.length; i++) {
+                const saved = data.inventory[i];
+                game.inventory.items[i] = saved ? { id: saved.id, amount: saved.amount, charge: saved.charge || 0, uses: saved.uses || 0 } : null;
+            }
+            game.inventory.notify();
+        }
+        if (data.arcadeZombie) {
+            game.arcadeZombie = { ...data.arcadeZombie };
+        }
+        return true;
     }
 }

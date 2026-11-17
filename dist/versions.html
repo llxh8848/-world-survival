@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a2a1a">
+    <title>版本介绍 - 世界生存</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a2a1a, #0d1d0d);
+            color: #fff; min-height: 100vh; overflow-y: auto;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 30px 20px 60px; }
+        h1 { text-align: center; font-size: 2.5em; margin-bottom: 5px; background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFEC8B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(255,215,0,0.5); animation: goldShimmer 2s ease-in-out infinite; }
+        @keyframes goldShimmer {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(255,215,0,0.3)); }
+            50% { filter: brightness(1.2) drop-shadow(0 0 16px rgba(255,215,0,0.6)); }
+        }
+        .subtitle { text-align: center; color: #888; margin-bottom: 30px; }
+
+        /* 搜索栏 */
+        .search-bar {
+            display: flex; gap: 10px; margin-bottom: 30px;
+            position: sticky; top: 0; z-index: 100;
+            background: linear-gradient(135deg, #1a2a1a, #0d1d0d);
+            padding: 15px 0;
+        }
+        .search-bar input {
+            flex: 1; padding: 12px 18px; font-size: 1.1em;
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; color: #fff; outline: none;
+            text-align: center;
+        }
+        .search-bar input:focus { border-color: #6a9c5a; }
+        .search-bar input::placeholder { color: #555; }
+        .search-bar button {
+            padding: 12px 24px; font-size: 1em; cursor: pointer;
+            background: linear-gradient(135deg, #4a7c3a, #6a9c5a);
+            color: #fff; border: none; border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+        }
+        .search-bar button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(106, 156, 90, 0.4);
+        }
+
+        /* 版本卡片 */
+        .version-card {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            margin-bottom: 20px; padding: 25px 30px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .version-card:hover {
+            border-color: rgba(106, 156, 90, 0.3);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+        .version-card.bugfix { border-left: 3px solid #c97a3a; }
+        .version-card.feature { border-left: 3px solid #6a9c5a; }
+        .version-header {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 15px; flex-wrap: wrap;
+        }
+        .version-number {
+            font-size: 1.6em; font-weight: bold;
+            background: linear-gradient(135deg, #4a7c3a, #6a9c5a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .version-card.bugfix .version-number {
+            background: linear-gradient(135deg, #c97a3a, #e89a5a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .version-tag {
+            font-size: 0.75em; padding: 3px 10px; border-radius: 12px;
+            background: rgba(106, 156, 90, 0.2); color: #8cba7c;
+            border: 1px solid rgba(106, 156, 90, 0.3);
+        }
+        .version-card.bugfix .version-tag {
+            background: rgba(201, 122, 58, 0.2); color: #e89a5a;
+            border: 1px solid rgba(201, 122, 58, 0.3);
+        }
+        .version-date { font-size: 0.85em; color: #666; margin-left: auto; }
+        .version-title { font-size: 1.2em; color: #ccc; margin-bottom: 12px; }
+        .version-content { list-style: none; }
+        .version-content li {
+            padding: 6px 0 6px 24px; position: relative;
+            color: #aaa; font-size: 0.95em; line-height: 1.6;
+        }
+        .version-content li::before {
+            content: '▸'; position: absolute; left: 5px; color: #6a9c5a;
+        }
+        .version-card.bugfix .version-content li::before { color: #c97a3a; }
+
+        /* 无结果 */
+        .no-result {
+            text-align: center; color: #555; font-size: 1.2em;
+            padding: 60px 20px; display: none;
+        }
+
+        /* 返回按钮 */
+        .btn-back {
+            display: block; margin: 0 auto 30px;
+            padding: 10px 30px; font-size: 1em; cursor: pointer;
+            background: rgba(0,0,0,0.4); color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+            text-decoration: none; text-align: center;
+            transition: all 0.2s; width: fit-content;
+        }
+        .btn-back:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+        .version-list-label {
+            font-size: 0.8em; color: #555; margin-bottom: 15px;
+        }
+        .version-nav {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 25px;
+        }
+        .version-nav-item {
+            padding: 4px 12px; font-size: 0.85em; cursor: pointer;
+            background: rgba(0,0,0,0.3); color: #888;
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .version-nav-item:hover {
+            color: #6a9c5a; border-color: rgba(106, 156, 90, 0.3);
+        }
+        .version-nav-item.bugfix { color: #c97a3a; }
+        .version-nav-item.bugfix:hover { border-color: rgba(201, 122, 58, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 版本介绍</h1>
+        <p class="subtitle">世界生存 - 更新历史</p>
+
+        <a href="index.html" class="btn-back">← 返回游戏</a>
+
+        <div class="search-bar">
+            <input type="text" id="versionSearch" placeholder="输入版本号（如 v1.4.0）查看" autocomplete="off">
+            <button id="searchBtn">查看</button>
+            <button id="showAllBtn">全部</button>
+        </div>
+
+        <div class="version-list-label">快速跳转：</div>
+        <div class="version-nav" id="versionNav"></div>
+
+        <div id="versionList"></div>
+        <div class="no-result" id="noResult">未找到该版本，请检查版本号格式（如 v1.0.0）</div>
+    </div>
+
+    <script>
+        // 版本数据：v主版本.更新次数.修bug次数
+        // 修bug版本（第三位>0）不算更新次数
+        const VERSIONS = [
+            {
+                version: 'v1.0.0',
+                type: 'feature',
+                title: '世界生存 - 初始发布',
+                date: '2025-06-01',
+                items: [
+                    '3D体素风格生存世界，无限地图生成',
+                    '基础生存系统：生命值、饥饿、口渴、温度',
+                    '资源采集：砍树、挖石、采矿、采集浆果',
+                    '合成系统：工具、武器、建筑材料、食物',
+                    '建造系统：木墙、石墙、篝火、火把等',
+                    '昼夜循环系统，夜晚怪物出没',
+                    '基础怪物：僵尸、蜘蛛、树精',
+                    '物品栏与快捷栏系统',
+                    'WASD移动 + 鼠标视角操作',
+                    '手机触控支持：虚拟摇杆与按钮',
+                ],
+            },
+            {
+                version: 'v1.1.0',
+                type: 'feature',
+                title: '盔甲与护身符',
+                date: '2025-06-15',
+                items: [
+                    '盔甲系统：头盔、胸甲、护腿、靴子四种装备部位',
+                    '木盔甲、坚硬木盔甲、石盔甲、铁盔甲、钻石盔甲',
+                    '护身符系统：四个护身符槽位',
+                    '多种护身符：生命护身符、饥饿护身符、力量护身符等',
+                    '斧头对树木额外掉落加成',
+                    '知识书架：解锁更多合成配方',
+                    '最终书架：合成特殊护身符',
+                    '锻造台：升级装备',
+                ],
+            },
+            {
+                version: 'v1.2.0',
+                type: 'feature',
+                title: '石之维度',
+                date: '2025-07-01',
+                items: [
+                    '传送门穿越器：在普通世界与石之维度间穿梭',
+                    '全新石之维度世界：石头地貌、独特资源',
+                    '新怪物：石头守护者、石化人',
+                    '石之维度Boss：石头怪物Boss',
+                    '新资源：轻量石、稀有石、超级石',
+                    '新建筑材料：石墙、石头祭坛等',
+                    '石之维度白天怪物不燃烧',
+                    '镐子对石类怪物有额外伤害加成',
+                ],
+            },
+            {
+                version: 'v1.3.0',
+                type: 'feature',
+                title: '多人联机',
+                date: '2025-07-10',
+                items: [
+                    'MQTT多人游戏系统，实时同步',
+                    '玩家位置、装备、动作实时同步',
+                    '聊天系统：按T键发送消息',
+                    'PvP战斗：攻击其他玩家',
+                    '官方房间：所有玩家可加入',
+                    '多人玩家列表显示',
+                    '时间同步：多人共享昼夜循环',
+                    '建筑同步：其他玩家可以看到你的建筑',
+                ],
+            },
+            {
+                version: 'v1.4.0',
+                type: 'feature',
+                title: '巨石怪Boss',
+                date: '2025-07-20',
+                items: [
+                    '巨石怪Boss：1000血量，两阶段AI',
+                    '第一阶段：巨石投掷（70伤害）、地下钻行突袭（40伤害）',
+                    '第二阶段：追踪石弹（15伤害）、地砸攻击（150伤害）',
+                    '地砸攻击动画：抬手蓄力 → 震动 → 砸下 → 恢复',
+                    '地砸攻击范围：前方40m长3m宽矩形区域',
+                    '地砸期间Boss不转向，锁定朝向',
+                    '屏幕震动效果：地砸时相机晃动',
+                    '超级石头：用知识书架合成，10个可召唤巨石怪',
+                    '石头之心：巨石怪掉落稀有材料',
+                    '祭坛召唤系统：普通祭坛放入材料召唤Boss',
+                    '巨石怪免疫白天燃烧',
+                    '镐子加成适用于巨石怪',
+                    '所有非树类怪物优先攻击树类怪物',
+                    '巨石怪吸收值机制（第二阶段减伤）',
+                ],
+            },
+            {
+                version: 'v1.4.1',
+                type: 'bugfix',
+                title: '巨石怪修复（第1次修bug）',
+                date: '2025-07-22',
+                items: [
+                    '修复超级石头合成配方：改为知识书架合成',
+                    '修复地砸攻击范围：精确为前方40m长3m宽矩形',
+                    '修复地砸期间Boss转向问题：锁定朝向不旋转',
+                    '修复地砸动画速度：调整为更慢更震撼的节奏',
+                ],
+            },
+            {
+                version: 'v1.5.1',
+                type: 'feature',
+                title: '联机建筑持久化',
+                date: '2025-07-29',
+                items: [
+                    '服务器端建筑状态持久化存储',
+                    '新玩家加入房间时自动从服务器加载所有建筑',
+                    '建筑内部状态完整同步：矿机存储、矿机工具、箱子内容、祭坛存储',
+                    '建筑放置和移除实时同步给所有在线玩家',
+                    '建筑移除同步：其他玩家可以看到建筑被拆除',
+                    '定期自动保存建筑到服务器（每15秒）',
+                    '标签页隐藏时游戏继续运行（setInterval后备循环）',
+                    '矿机在玩家离线时继续挖矿',
+                    '建筑状态在所有玩家离线后依然保存在服务器',
+                ],
+            },
+            {
+                version: 'v1.5.2',
+                type: 'bugfix',
+                title: '联机实时同步修复（第2次修bug）',
+                date: '2025-07-29',
+                items: [
+                    'Boss召唤实时同步：其他玩家可以看到Boss生成',
+                    'Boss攻击所有在线玩家：Boss对范围内所有玩家造成伤害',
+                    'Boss死亡实时同步：其他玩家可以看到Boss消失',
+                    '建筑拆除实时同步：其他玩家可以看到建筑被回收',
+                    'PvP血量实时同步：其他玩家可以实时看到你的血量变化',
+                    '树精召唤同步：稀有木堆召唤树精时其他玩家可见',
+                ],
+            },
+            {
+                version: 'v1.6.2',
+                type: 'feature',
+                title: '石之维度遗迹更新',
+                date: '2025-07-30',
+                items: [
+                    '石世界遗迹：石神殿以3.72%概率在石世界区块中生成',
+                    '石神殿建筑：石质底座、四角石柱、顶部尖塔、中央发光石晶',
+                    '石头守护者：石神殿周围生成2-3个石守卫守护遗迹',
+                    '遗迹宝箱：石神殿中央生成宝箱，掉落苹果2-9、石头1-6、超级石头0-4',
+                    '多存档系统：私人游戏支持最多5个独立存档槽位',
+                    '维度记忆：退出时所在维度会被保存，重新进入时自动恢复',
+                    '区块扩大：区块大小从20x20提升至80x80',
+                ],
+            },
+            {
+                version: 'v1.7.2',
+                type: 'feature',
+                title: '金维度与金树精Boss',
+                date: '2025-08-08',
+                items: [
+                    '金维度世界：通过黄金祭坛传送进入，金色地貌与独特资源',
+                    '金树精Boss：金维度祭坛召唤，1000血量/5防御/15伤害',
+                    '金树精不受任何工具加成伤害',
+                    '金树精一阶段：距离>17m时每4秒藤蔓缠绕玩家，造成10伤害+1.5秒眩晕',
+                    '金树精二阶段：血量降为600，伤害提升至32，长出四枝',
+                    '二阶段每5秒发射黄金木头弹道：58%概率发射（10伤害+5秒眩晕），42%概率藤蔓拉扯（将玩家拉回+3秒眩晕）',
+                    '金树精掉落：最终木材（divine_wood）',
+                    '玩家眩晕系统：被眩晕时无法移动、攻击、使用物品',
+                    '仙人掌反甲符：5石+7仙人掌+3木合成，50%概率反弹3伤害',
+                    '仙人掌：沙漠生物群系生成，可食用、可充能',
+                    '沙漠生物群系：全新地形，仙人掌分布',
+                    '工具耐久系统：木60/石120/铁240/钢400/最终600，狂欢之剑3次',
+                    '耐久耗尽自动消失并提示',
+                    '热键栏扩展为9格，底部显示红色耐久条',
+                    '全界面标题金色金光闪闪特效',
+                ],
+            },
+            {
+                version: 'v1.8.3',
+                type: 'feature',
+                title: '设置界面与砖块建造',
+                date: '2025-08-19',
+                items: [
+                    '设置界面：主菜单新增⚙️设置按钮，可进入设置页面',
+                    '渲染优化开关：在设置中控制视锥体剔除，关闭后所有物体强制可见',
+                    '怀旧材质开关：开启后切换旧版画质（平面着色、关闭阴影与高级光照、降低光照强度、简化水面）',
+                    '怀旧材质影响所有3D模型：地形、树木、矿石、建筑、敌人、玩家模型全部变为平面着色风格',
+                    '新生成的区块、资源、敌人、建筑自动应用怀旧材质设置',
+                    '木墙/石墙改为木砖块/石砖块：1×1×1正方体方块，我的世界风格放置',
+                    '砖块网格对齐放置：无旋转，同位置已有方块时自动向上堆叠',
+                    '砖块碰撞改为方块碰撞：玩家和怪物与1×1×1方块正确碰撞',
+                    '配方调整：2木材→4木砖块，2石头→4石砖块',
+                    '钓鱼动画系统：抛竿、等待、咬钩、收竿四阶段动画',
+                    '钓鱼收杆背包满时不再吞鱼竿，改为提示并保留鱼竿',
+                    '按键调整：E键打开背包，F键交互/拾取，Q键删除物品',
+                ],
+            },
+            {
+                version: 'v1.9.4',
+                type: 'bugfix',
+                title: '联机修复与群系优化',
+                date: '2026-08-31',
+                items: [
+                    '修复联机加入房间时自己产生错误分身的问题',
+                    '修复公共 MQTT 代理在非 localhost 下的优先级',
+                    '娱乐房/大厅模式不再生成矿洞入口并禁止进入矿洞',
+                    '新增海洋群系：每 15×15 区块大格子中有 15% 概率生成，占地 5×8=40 区块',
+                    '重造沙漠群系：降低生成概率至 10%，每个沙漠固定 3×4=12 区块',
+                    '同种群系中心点至少相隔 15 个区块，海洋不会邻接沙漠生成',
+                ],
+            },
+        ];
+
+        // 渲染版本列表（按时间顺序）
+        function renderVersions(filter) {
+            const list = document.getElementById('versionList');
+            const noResult = document.getElementById('noResult');
+            list.innerHTML = '';
+            let shown = 0;
+
+            for (const v of VERSIONS) {
+                if (filter && !v.version.toLowerCase().includes(filter.toLowerCase())) continue;
+                const card = document.createElement('div');
+                card.className = 'version-card ' + v.type;
+                const tagText = v.type === 'bugfix' ? '修bug' : '更新';
+                const itemsHtml = v.items.map(item => `<li>${item}</li>`).join('');
+                card.innerHTML = `
+                    <div class="version-header">
+                        <span class="version-number">${v.version}</span>
+                        <span class="version-tag">${tagText}</span>
+                        <span class="version-date">${v.date}</span>
+                    </div>
+                    <div class="version-title">${v.title}</div>
+                    <ul class="version-content">${itemsHtml}</ul>
+                `;
+                list.appendChild(card);
+                shown++;
+            }
+
+            noResult.style.display = shown === 0 ? 'block' : 'none';
+        }
+
+        // 渲染版本导航
+        function renderNav() {
+            const nav = document.getElementById('versionNav');
+            nav.innerHTML = '';
+            for (const v of VERSIONS) {
+                const item = document.createElement('div');
+                item.className = 'version-nav-item' + (v.type === 'bugfix' ? ' bugfix' : '');
+                item.textContent = v.version;
+                item.addEventListener('click', () => {
+                    document.getElementById('versionSearch').value = v.version;
+                    renderVersions(v.version);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+                nav.appendChild(item);
+            }
+        }
+
+        // 搜索
+        function doSearch() {
+            const val = document.getElementById('versionSearch').value.trim();
+            renderVersions(val);
+        }
+
+        document.getElementById('searchBtn').addEventListener('click', doSearch);
+        document.getElementById('showAllBtn').addEventListener('click', () => {
+            document.getElementById('versionSearch').value = '';
+            renderVersions('');
+        });
+        document.getElementById('versionSearch').addEventListener('keydown', (e) => {
+            if (e.code === 'Enter') doSearch();
+        });
+
+        // 初始化
+        renderNav();
+        renderVersions('');
+    </script>
+</body>
+</html>

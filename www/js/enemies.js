@@ -10,9 +10,26 @@ class EnemySystem {
         this.spawnInterval = 8;
         this.cowSpawnTimer = 0;
         this.cowSpawnInterval = 15;
+        this.camelSpawnTimer = 0;
+        this.camelSpawnInterval = 25;
         this.nightTreeChopCount = 0; // 夜晚砍树计数
         this.stoneMinedCount = 0; // 石头维度挖石头计数
         this._camera = null;
+    }
+
+    _applyRetro(mesh) {
+        if (!window.game || !window.game.retroMaterial || !mesh) return;
+        mesh.traverse(c => {
+            if (c.isMesh && c.material) {
+                const mats = Array.isArray(c.material) ? c.material : [c.material];
+                for (const m of mats) {
+                    if (m.flatShading !== undefined) m.flatShading = true;
+                    m.needsUpdate = true;
+                }
+                if (c.castShadow !== undefined) c.castShadow = false;
+                if (c.receiveShadow !== undefined) c.receiveShadow = false;
+            }
+        });
     }
 
     // Boss造成伤害：攻击本地玩家 + 同步到其他在线玩家
@@ -83,6 +100,14 @@ class EnemySystem {
         const x = playerPos.x + Math.cos(angle) * dist;
         const z = playerPos.z + Math.sin(angle) * dist;
         const y = this.world.getHeight(x, z);
+
+        const cx = Math.floor(x / this.world.chunkSize);
+        const cz = Math.floor(z / this.world.chunkSize);
+        // 沙漠群系生成沙漠僵尸
+        if (this.world.isDesertBiome(cx, cz)) {
+            this._spawnDesertZombie(x, y, z);
+            return;
+        }
 
         // 20%概率生成石之怪
         const isStoneMonster = Math.random() < 0.20;
@@ -274,6 +299,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -474,6 +500,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -762,6 +789,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -1344,6 +1372,7 @@ class EnemySystem {
         const footR = new THREE.Mesh(footGeo, footMat);
         footR.position.set(0.15, 0.05, 0.04); group.add(footR);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -1378,24 +1407,153 @@ class EnemySystem {
         this._createHealthBar(enemy);
     }
 
+    _spawnDesertZombie(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        const sandColor = 0xbfa070;
+        const darkSand = 0x8b7350;
+        const boneColor = 0xd8d0b8;
+
+        // 身体
+        const bodyGeo = new THREE.CapsuleGeometry(0.35, 0.8, 8, 16);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: sandColor, roughness: 0.7, flatShading: false, metalness: 0.05 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.75;
+        body.castShadow = true;
+        group.add(body);
+
+        // 破烂衣物/绷带碎片
+        const ragGeo = new THREE.BoxGeometry(0.15, 0.25, 0.02);
+        const ragMat = new THREE.MeshStandardMaterial({ color: 0x8b6b45, roughness: 0.9, flatShading: false });
+        const rag1 = new THREE.Mesh(ragGeo, ragMat);
+        rag1.position.set(-0.25, 0.6, 0.33); rag1.rotation.z = 0.3; group.add(rag1);
+        const rag2 = new THREE.Mesh(ragGeo, ragMat);
+        rag2.position.set(0.2, 0.9, 0.33); rag2.rotation.z = -0.2; group.add(rag2);
+
+        // 肋骨
+        const ribGeo = new THREE.BoxGeometry(0.3, 0.03, 0.03);
+        const ribMat = new THREE.MeshStandardMaterial({ color: boneColor, roughness: 0.5, flatShading: false });
+        for (let i = 0; i < 3; i++) {
+            const rib = new THREE.Mesh(ribGeo, ribMat);
+            rib.position.set(0, 0.85 - i * 0.12, 0.34);
+            rib.castShadow = true;
+            group.add(rib);
+        }
+
+        // 头
+        const headGeo = new THREE.SphereGeometry(0.3, 16, 12);
+        const headMat = new THREE.MeshStandardMaterial({ color: sandColor, roughness: 0.7, flatShading: false, metalness: 0.05 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.5;
+        head.castShadow = true;
+        group.add(head);
+
+        // 头骨外露碎片
+        const skullGeo = new THREE.BoxGeometry(0.08, 0.06, 0.02);
+        const skullMat = new THREE.MeshStandardMaterial({ color: boneColor, roughness: 0.5, flatShading: false });
+        const skull = new THREE.Mesh(skullGeo, skullMat);
+        skull.position.set(-0.1, 1.65, 0.25); group.add(skull);
+
+        // 眼睛
+        const eyeGeo = new THREE.SphereGeometry(0.07, 8, 6);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.12, 1.55, 0.25); group.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.12, 1.55, 0.25); group.add(eyeR);
+
+        // 嘴部
+        const mouthGeo = new THREE.BoxGeometry(0.12, 0.06, 0.02);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x1a0000 });
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, 1.4, 0.28); group.add(mouth);
+
+        // 手臂
+        const armGeo = new THREE.CapsuleGeometry(0.12, 0.5, 6, 12);
+        const armMat = new THREE.MeshStandardMaterial({ color: darkSand, roughness: 0.7, flatShading: false, metalness: 0.05 });
+        const armL = new THREE.Mesh(armGeo, armMat);
+        armL.position.set(-0.4, 0.8, 0); armL.castShadow = true; group.add(armL);
+        const armR = new THREE.Mesh(armGeo, armMat);
+        armR.position.set(0.4, 0.8, 0); armR.castShadow = true; group.add(armR);
+
+        // 手爪
+        const clawGeo = new THREE.ConeGeometry(0.04, 0.15, 5);
+        const clawMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.6, flatShading: false });
+        const clawL = new THREE.Mesh(clawGeo, clawMat);
+        clawL.position.set(-0.4, 0.45, 0.1); clawL.rotation.x = Math.PI / 2; group.add(clawL);
+        const clawR = new THREE.Mesh(clawGeo, clawMat);
+        clawR.position.set(0.4, 0.45, 0.1); clawR.rotation.x = Math.PI / 2; group.add(clawR);
+
+        // 腿
+        const legGeo = new THREE.CapsuleGeometry(0.12, 0.4, 6, 12);
+        const legMat = new THREE.MeshStandardMaterial({ color: darkSand, roughness: 0.7, flatShading: false, metalness: 0.05 });
+        const legL = new THREE.Mesh(legGeo, legMat);
+        legL.position.set(-0.15, 0.25, 0); legL.castShadow = true; group.add(legL);
+        const legR = new THREE.Mesh(legGeo, legMat);
+        legR.position.set(0.15, 0.25, 0); legR.castShadow = true; group.add(legR);
+
+        // 脚骨
+        const footGeo = new THREE.BoxGeometry(0.12, 0.06, 0.2);
+        const footMat = new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.7, flatShading: false });
+        const footL = new THREE.Mesh(footGeo, footMat);
+        footL.position.set(-0.15, 0.05, 0.04); group.add(footL);
+        const footR = new THREE.Mesh(footGeo, footMat);
+        footR.position.set(0.15, 0.05, 0.04); group.add(footR);
+
+        this._applyRetro(group);
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            health: 120,
+            maxHealth: 120,
+            speed: 2.5 + Math.random() * 1.5,
+            damage: 20,
+            attackRange: 2,
+            attackCooldown: 0,
+            dead: false,
+            state: 'idle',
+            wanderDir: new THREE.Vector3(),
+            wanderTimer: 0,
+            bodyMat: bodyMat,
+            hitFlash: 0,
+            enemyType: 'desert_zombie',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount;
+                this.hitFlash = 0.2;
+                if (this.health <= 0) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
     _spawnGoldZombie(x, y, z) {
         const group = new THREE.Group();
         group.position.set(x, y, z);
 
         const bodyGeo = new THREE.CapsuleGeometry(0.38, 0.9, 8, 16);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, flatShading: false, metalness: 0.7, emissive: 0x442200, emissiveIntensity: 0.3 });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, flatShading: false, metalness: 0.3, emissive: 0x442200, emissiveIntensity: 0.3 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.8;
         body.castShadow = true;
         body.receiveShadow = true;
         group.add(body);
-        const gCrackMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.2, metalness: 0.9, flatShading: false });
+        const gCrackMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.3, metalness: 0.3, flatShading: false });
         const gCrack1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.02), gCrackMat);
         gCrack1.position.set(0, 0.9, 0.36); group.add(gCrack1);
         const gCrack2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.02), gCrackMat);
         gCrack2.position.set(0.15, 1.0, 0.36); group.add(gCrack2);
         const ribGeo = new THREE.BoxGeometry(0.32, 0.03, 0.03);
-        const ribMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.2, metalness: 0.8, flatShading: false });
+        const ribMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.3, metalness: 0.3, flatShading: false });
         for (let i = 0; i < 3; i++) {
             const rib = new THREE.Mesh(ribGeo, ribMat);
             rib.position.set(0, 0.95 - i * 0.13, 0.37);
@@ -1403,7 +1561,7 @@ class EnemySystem {
             group.add(rib);
         }
         const headGeo = new THREE.SphereGeometry(0.32, 16, 12);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.25, flatShading: false, metalness: 0.7, emissive: 0x442200, emissiveIntensity: 0.3 });
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.3, flatShading: false, metalness: 0.3, emissive: 0x442200, emissiveIntensity: 0.3 });
         const head = new THREE.Mesh(headGeo, headMat);
         head.position.y = 1.6;
         head.castShadow = true;
@@ -1424,14 +1582,14 @@ class EnemySystem {
         const mouth = new THREE.Mesh(mouthGeo, mouthMat);
         mouth.position.set(0, 1.5, 0.3); group.add(mouth);
         const toothGeo = new THREE.BoxGeometry(0.02, 0.04, 0.02);
-        const toothMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.2, metalness: 0.8 });
+        const toothMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.3, metalness: 0.3 });
         for (let i = 0; i < 4; i++) {
             const tooth = new THREE.Mesh(toothGeo, toothMat);
             tooth.position.set(-0.05 + i * 0.035, 1.47, 0.31);
             group.add(tooth);
         }
         const gzArmGeo = new THREE.CapsuleGeometry(0.13, 0.55, 6, 12);
-        const gzArmMat = new THREE.MeshStandardMaterial({ color: 0xcc9900, roughness: 0.3, flatShading: false, metalness: 0.6, emissive: 0x332200, emissiveIntensity: 0.2 });
+        const gzArmMat = new THREE.MeshStandardMaterial({ color: 0xcc9900, roughness: 0.3, flatShading: false, metalness: 0.3, emissive: 0x332200, emissiveIntensity: 0.2 });
         const gzArmL = new THREE.Mesh(gzArmGeo, gzArmMat);
         gzArmL.position.set(-0.45, 0.85, 0);
         gzArmL.castShadow = true;
@@ -1441,19 +1599,19 @@ class EnemySystem {
         gzArmR.castShadow = true;
         group.add(gzArmR);
         const gBoneGeo = new THREE.BoxGeometry(0.04, 0.18, 0.04);
-        const gBoneMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.2, metalness: 0.8, flatShading: false });
+        const gBoneMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.3, metalness: 0.3, flatShading: false });
         const gBoneL = new THREE.Mesh(gBoneGeo, gBoneMat);
         gBoneL.position.set(-0.45, 0.6, 0.15); gBoneL.rotation.x = 0.5; group.add(gBoneL);
         const gBoneR = new THREE.Mesh(gBoneGeo, gBoneMat);
         gBoneR.position.set(0.45, 0.7, 0.15); gBoneR.rotation.x = -0.3; group.add(gBoneR);
         const gClawGeo = new THREE.ConeGeometry(0.05, 0.18, 5);
-        const gClawMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, metalness: 0.7, flatShading: false });
+        const gClawMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, metalness: 0.3, flatShading: false });
         const gClawL = new THREE.Mesh(gClawGeo, gClawMat);
         gClawL.position.set(-0.45, 0.48, 0.12); gClawL.rotation.x = Math.PI / 2; group.add(gClawL);
         const gClawR = new THREE.Mesh(gClawGeo, gClawMat);
         gClawR.position.set(0.45, 0.48, 0.12); gClawR.rotation.x = Math.PI / 2; group.add(gClawR);
         const gzLegGeo = new THREE.CapsuleGeometry(0.13, 0.45, 6, 12);
-        const gzLegMat = new THREE.MeshStandardMaterial({ color: 0xaa7700, roughness: 0.35, flatShading: false, metalness: 0.5, emissive: 0x221100, emissiveIntensity: 0.2 });
+        const gzLegMat = new THREE.MeshStandardMaterial({ color: 0xaa7700, roughness: 0.35, flatShading: false, metalness: 0.3, emissive: 0x221100, emissiveIntensity: 0.2 });
         const gzLegL = new THREE.Mesh(gzLegGeo, gzLegMat);
         gzLegL.position.set(-0.16, 0.27, 0);
         gzLegL.castShadow = true;
@@ -1463,12 +1621,13 @@ class EnemySystem {
         gzLegR.castShadow = true;
         group.add(gzLegR);
         const gFootGeo = new THREE.BoxGeometry(0.14, 0.07, 0.22);
-        const gFootMat = new THREE.MeshStandardMaterial({ color: 0x886600, roughness: 0.4, metalness: 0.5, flatShading: false });
+        const gFootMat = new THREE.MeshStandardMaterial({ color: 0x886600, roughness: 0.4, metalness: 0.3, flatShading: false });
         const gFootL = new THREE.Mesh(gFootGeo, gFootMat);
         gFootL.position.set(-0.16, 0.05, 0.05); group.add(gFootL);
         const gFootR = new THREE.Mesh(gFootGeo, gFootMat);
         gFootR.position.set(0.16, 0.05, 0.05); group.add(gFootR);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -1510,8 +1669,8 @@ class EnemySystem {
         const group = new THREE.Group();
         group.position.set(x, y, z);
 
-        // 身体 - 大块岩石，超高细分
-        const bodyGeo = new THREE.DodecahedronGeometry(0.7, 3);
+        // 身体 - 大块岩石
+        const bodyGeo = new THREE.DodecahedronGeometry(0.7, 1);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.82, flatShading: false, metalness: 0.08, envMapIntensity: 0.4 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.7;
@@ -1542,8 +1701,8 @@ class EnemySystem {
         const frag3 = new THREE.Mesh(fragmentGeo, fragmentMat);
         frag3.position.set(0.5, 0.2, -0.3); frag3.castShadow = true; group.add(frag3);
 
-        // 头 - 较小岩石，超高细分
-        const headGeo = new THREE.DodecahedronGeometry(0.42, 3);
+        // 头 - 较小岩石
+        const headGeo = new THREE.DodecahedronGeometry(0.42, 1);
         const headMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.82, flatShading: false, metalness: 0.08 });
         const head = new THREE.Mesh(headGeo, headMat);
         head.position.y = 1.5;
@@ -1564,8 +1723,8 @@ class EnemySystem {
         group.add(eyeR);
         // 眼睛光晕
 
-        // 手臂 - 两侧小石块，超高细分
-        const armGeo = new THREE.DodecahedronGeometry(0.27, 2);
+        // 手臂 - 两侧小石块
+        const armGeo = new THREE.DodecahedronGeometry(0.27, 0);
         const armMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.82, flatShading: false, metalness: 0.08 });
         const armL = new THREE.Mesh(armGeo, armMat);
         armL.position.set(-0.8, 0.8, 0);
@@ -1594,6 +1753,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -1635,8 +1795,8 @@ class EnemySystem {
         group.position.set(x, y, z);
 
         // 身体 - 金色岩石
-        const bodyGeo = new THREE.DodecahedronGeometry(0.7, 3);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, flatShading: false, metalness: 0.9, envMapIntensity: 0.6 });
+        const bodyGeo = new THREE.DodecahedronGeometry(0.7, 1);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.3, flatShading: false, metalness: 0.3 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.7;
         body.scale.set(1.2, 1.0, 1.2);
@@ -1651,14 +1811,14 @@ class EnemySystem {
         gmCrack2.position.set(-0.15, 0.6, 0.55); group.add(gmCrack2);
         // 金色发光斑块
         const gmGlowGeo = new THREE.DodecahedronGeometry(0.1, 0);
-        const gmGlowMat = new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.05, flatShading: false, emissive: 0xffdd00, emissiveIntensity: 0.5, metalness: 1.0 });
+        const gmGlowMat = new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.2, flatShading: false, emissive: 0xffdd00, emissiveIntensity: 0.5, metalness: 0.3 });
         const gmGlow1 = new THREE.Mesh(gmGlowGeo, gmGlowMat);
         gmGlow1.position.set(-0.5, 0.5, 0.3); gmGlow1.scale.set(1, 0.3, 1); group.add(gmGlow1);
         const gmGlow2 = new THREE.Mesh(gmGlowGeo, gmGlowMat);
         gmGlow2.position.set(0.4, 1.0, -0.3); gmGlow2.scale.set(1, 0.4, 1); group.add(gmGlow2);
         // 浮动金碎片
         const fragGeo = new THREE.DodecahedronGeometry(0.08, 0);
-        const fragMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.1, flatShading: false, metalness: 0.95 });
+        const fragMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.2, flatShading: false, metalness: 0.3 });
         const frag1 = new THREE.Mesh(fragGeo, fragMat);
         frag1.position.set(0.6, 1.2, 0.3); frag1.castShadow = true; group.add(frag1);
         const frag2 = new THREE.Mesh(fragGeo, fragMat);
@@ -1667,8 +1827,8 @@ class EnemySystem {
         frag3.position.set(0.5, 0.2, -0.3); frag3.castShadow = true; group.add(frag3);
 
         // 头 - 金色岩石
-        const headGeo = new THREE.DodecahedronGeometry(0.42, 3);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.12, flatShading: false, metalness: 0.9 });
+        const headGeo = new THREE.DodecahedronGeometry(0.42, 1);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, flatShading: false, metalness: 0.3 });
         const head = new THREE.Mesh(headGeo, headMat);
         head.position.y = 1.5;
         head.castShadow = true;
@@ -1686,14 +1846,11 @@ class EnemySystem {
         const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
         eyeR.position.set(0.15, 1.55, 0.32);
         group.add(eyeR);
-        // 眼睛光晕
-        const eyeLight = new THREE.PointLight(0xffff00, 0.8, 4);
-        eyeLight.position.set(0, 1.55, 0.4);
-        group.add(eyeLight);
+        // 眼睛光晕（用emissive替代PointLight提升性能）
 
         // 手臂 - 两侧金色石块
-        const armGeo = new THREE.DodecahedronGeometry(0.27, 2);
-        const armMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.15, flatShading: false, metalness: 0.9 });
+        const armGeo = new THREE.DodecahedronGeometry(0.27, 0);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.3, flatShading: false, metalness: 0.3 });
         const armL = new THREE.Mesh(armGeo, armMat);
         armL.position.set(-0.8, 0.8, 0);
         armL.castShadow = true;
@@ -1704,14 +1861,14 @@ class EnemySystem {
         group.add(armR);
         // 手臂末端尖刺
         const gmSpikeGeo = new THREE.ConeGeometry(0.05, 0.15, 5);
-        const gmSpikeMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.1, flatShading: false, metalness: 0.95 });
+        const gmSpikeMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, flatShading: false, metalness: 0.3 });
         const gmSpikeL = new THREE.Mesh(gmSpikeGeo, gmSpikeMat);
         gmSpikeL.position.set(-0.8, 0.55, 0.15); gmSpikeL.rotation.x = Math.PI / 2; group.add(gmSpikeL);
         const gmSpikeR = new THREE.Mesh(gmSpikeGeo, gmSpikeMat);
         gmSpikeR.position.set(0.8, 0.55, 0.15); gmSpikeR.rotation.x = Math.PI / 2; group.add(gmSpikeR);
         // 底部金碎石基座
         const gmRubbleGeo = new THREE.DodecahedronGeometry(0.07, 0);
-        const gmRubbleMat = new THREE.MeshStandardMaterial({ color: 0x8b6508, roughness: 0.2, flatShading: false, metalness: 0.85 });
+        const gmRubbleMat = new THREE.MeshStandardMaterial({ color: 0x8b6508, roughness: 0.3, flatShading: false, metalness: 0.3 });
         for (let i = 0; i < 4; i++) {
             const ang = (i / 4) * Math.PI * 2;
             const r = new THREE.Mesh(gmRubbleGeo, gmRubbleMat);
@@ -1721,6 +1878,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -1869,6 +2027,7 @@ class EnemySystem {
             group.add(r);
         }
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2026,6 +2185,7 @@ class EnemySystem {
         udder.scale.set(1, 0.6, 1);
         group.add(udder);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2058,6 +2218,102 @@ class EnemySystem {
         };
         this.enemies.push(enemy);
         this._createHealthBar(enemy);
+    }
+
+    _spawnCamel(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // 身体 - 棕黄色
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xc99f62, roughness: 0.75, flatShading: false, metalness: 0.05 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.65), bodyMat);
+        body.position.y = 1.0;
+        body.castShadow = true; body.receiveShadow = true;
+        group.add(body);
+
+        // 驼峰
+        const humpMat = new THREE.MeshStandardMaterial({ color: 0xb88c53, roughness: 0.8, flatShading: false });
+        const hump = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), humpMat);
+        hump.position.set(-0.1, 1.55, 0);
+        hump.scale.set(1, 0.7, 0.8);
+        group.add(hump);
+
+        // 颈部
+        const neck = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.28), bodyMat);
+        neck.position.set(0.55, 1.35, 0);
+        neck.rotation.z = -0.4;
+        group.add(neck);
+
+        // 头
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.32), bodyMat);
+        head.position.set(0.8, 1.7, 0);
+        group.add(head);
+
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), eyeMat);
+        eyeL.position.set(0.96, 1.75, 0.1); group.add(eyeL);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), eyeMat);
+        eyeR.position.set(0.96, 1.75, -0.1); group.add(eyeR);
+
+        // 腿
+        const legMat = new THREE.MeshStandardMaterial({ color: 0xc99f62, roughness: 0.75 });
+        const positions = [[-0.35, 0.5, -0.2], [-0.35, 0.5, 0.2], [0.35, 0.5, -0.2], [0.35, 0.5, 0.2]];
+        for (const [lx, ly, lz] of positions) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.18), legMat);
+            leg.position.set(lx, ly, lz);
+            leg.castShadow = true;
+            group.add(leg);
+        }
+
+        // 尾巴
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.4, 8), humpMat);
+        tail.position.set(-0.65, 1.1, 0);
+        tail.rotation.z = Math.PI / 3;
+        group.add(tail);
+
+        this._applyRetro(group);
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            health: 50,
+            maxHealth: 50,
+            speed: 2.0 + Math.random(),
+            damage: 0,
+            attackRange: 0,
+            attackCooldown: 0,
+            dead: false,
+            state: 'idle',
+            wanderDir: new THREE.Vector3(),
+            wanderTimer: 0,
+            bodyMat: bodyMat,
+            hitFlash: 0,
+            enemyType: 'camel',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            tamed: false,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount;
+                this.hitFlash = 0.2;
+                if (this.health <= 0) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnTamedCamel(x, y, z) {
+        this._spawnCamel(x, y, z);
+        const camel = this.enemies[this.enemies.length - 1];
+        if (camel && camel.enemyType === 'camel') {
+            camel.tamed = true;
+        }
     }
 
     _spawnFakeTree(x, y, z) {
@@ -2157,6 +2413,7 @@ class EnemySystem {
         const fangR = new THREE.Mesh(fangGeo, fangMat);
         fangR.position.set(0.06, 1.87, 0.39); fangR.rotation.x = Math.PI; group.add(fangR);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2321,6 +2578,7 @@ class EnemySystem {
         root3.castShadow = true;
         group.add(root3);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2478,6 +2736,7 @@ class EnemySystem {
         ftgRoot3.castShadow = true;
         group.add(ftgRoot3);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2662,6 +2921,7 @@ class EnemySystem {
         light.position.y = 4;
         group.add(light);
 
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2724,6 +2984,7 @@ class EnemySystem {
         const armGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.2, 8);
         const armL = new THREE.Mesh(armGeo, trunkMat); armL.position.set(-0.9, 1.3, 0); armL.rotation.z = Math.PI/4; group.add(armL);
         const armR = new THREE.Mesh(armGeo, trunkMat); armR.position.set(0.9, 1.3, 0); armR.rotation.z = -Math.PI/4; group.add(armR);
+        this._applyRetro(group);
         this.scene.add(group);
 
         const enemy = {
@@ -2775,6 +3036,495 @@ class EnemySystem {
         };
         this.enemies.push(enemy);
         this._createHealthBar(enemy);
+    }
+
+    _spawnElementKing(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        // 基座 - 巨大石台
+        const baseGeo = new THREE.CylinderGeometry(2.5, 3.0, 0.8, 16);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.85, flatShading: false, metalness: 0.15 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.4;
+        base.castShadow = true;
+        base.receiveShadow = true;
+        group.add(base);
+
+        // 身体 - 三元素融合巨像
+        const bodyGeo = new THREE.BoxGeometry(2.2, 3.0, 1.8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5a4a30, roughness: 0.7, flatShading: false, metalness: 0.2, emissive: 0x1a0a00, emissiveIntensity: 0.15 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 2.3;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // 木元素左臂 - 树枝手臂
+        const woodArmGeo = new THREE.CylinderGeometry(0.35, 0.25, 2.5, 10);
+        const woodArmMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.85, flatShading: false, metalness: 0.05 });
+        const woodArm = new THREE.Mesh(woodArmGeo, woodArmMat);
+        woodArm.position.set(-1.5, 2.5, 0);
+        woodArm.rotation.z = Math.PI / 5;
+        woodArm.castShadow = true;
+        group.add(woodArm);
+        // 木臂树叶
+        const woodLeaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 2), new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.7, flatShading: false }));
+        woodLeaf.position.set(-2.2, 3.5, 0);
+        woodLeaf.castShadow = true;
+        group.add(woodLeaf);
+
+        // 石元素右臂 - 巨大石臂
+        const stoneArmGeo = new THREE.BoxGeometry(0.7, 2.8, 0.7);
+        const stoneArmMat = new THREE.MeshStandardMaterial({ color: 0x5a5e64, roughness: 0.8, flatShading: false, metalness: 0.15 });
+        const stoneArm = new THREE.Mesh(stoneArmGeo, stoneArmMat);
+        stoneArm.position.set(1.5, 2.3, 0);
+        stoneArm.castShadow = true;
+        group.add(stoneArm);
+        // 石臂拳头
+        const stoneFist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 2), stoneArmMat);
+        stoneFist.position.set(1.5, 0.9, 0);
+        stoneFist.castShadow = true;
+        group.add(stoneFist);
+
+        // 金元素核心 - 胸口发光核心
+        const coreGeo = new THREE.SphereGeometry(0.4, 16, 12);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.8 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.set(0, 2.5, 0.95);
+        group.add(core);
+        const coreLight = new THREE.PointLight(0xffdd00, 3, 15);
+        coreLight.position.set(0, 2.5, 1);
+        group.add(coreLight);
+
+        // 头部 - 三元素王冠
+        const headGeo = new THREE.IcosahedronGeometry(0.8, 2);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x4a4030, roughness: 0.6, flatShading: false, metalness: 0.3, emissive: 0x221100, emissiveIntensity: 0.2 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 4.2;
+        head.castShadow = true;
+        group.add(head);
+
+        // 王冠 - 金色尖刺
+        const crownMat = new THREE.MeshStandardMaterial({ color: 0xffdd00, roughness: 0.3, metalness: 0.3, emissive: 0x442200, emissiveIntensity: 0.3 });
+        for (let i = 0; i < 5; i++) {
+            const ang = (i / 5) * Math.PI * 2;
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 6), crownMat);
+            spike.position.set(Math.cos(ang) * 0.5, 4.8, Math.sin(ang) * 0.5);
+            spike.castShadow = true;
+            group.add(spike);
+        }
+
+        // 眼睛 - 三色发光
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0x00ff44 }));
+        eyeL.position.set(-0.25, 4.3, 0.65);
+        group.add(eyeL);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff4400 }));
+        eyeR.position.set(0.25, 4.3, 0.65);
+        group.add(eyeR);
+        const eyeLight = new THREE.PointLight(0xff8800, 2, 8);
+        eyeLight.position.set(0, 4.3, 0.8);
+        group.add(eyeLight);
+
+        // 嘴 - 巨大裂缝
+        const mouthGeo = new THREE.BoxGeometry(0.4, 0.08, 0.02);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x0a0500 });
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, 3.9, 0.75);
+        group.add(mouth);
+
+        // 腿 - 粗壮石柱（不移动，仅装饰）
+        const legGeo = new THREE.BoxGeometry(0.7, 1.6, 0.7);
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x4a4e54, roughness: 0.8, flatShading: false, metalness: 0.15 });
+        const legL = new THREE.Mesh(legGeo, legMat);
+        legL.position.set(-0.7, 0.8, 0);
+        legL.castShadow = true;
+        group.add(legL);
+        const legR = new THREE.Mesh(legGeo, legMat);
+        legR.position.set(0.7, 0.8, 0);
+        legR.castShadow = true;
+        group.add(legR);
+
+        this.scene.add(group);
+
+        const self = this;
+        const enemy = {
+            mesh: group,
+            health: 1500,
+            maxHealth: 1500,
+            speed: 0,
+            damage: 20,
+            attackRange: 4,
+            attackCooldown: 0,
+            dead: false,
+            state: 'idle',
+            bodyMat: bodyMat,
+            eyeMatL: eyeL.material,
+            eyeMatR: eyeR.material,
+            coreMat: coreMat,
+            hitFlash: 0,
+            enemyType: 'element_king',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            defense: 7,
+            phase: 1,
+            phase2Triggered: false,
+            phase3Triggered: false,
+            // Phase 1 timers
+            treeActivateTimer: 4 + Math.random() * 14,
+            woodBlockTimer: 5 + Math.random() * 3,
+            bossSkillTimer: 10,
+            // Phase 2 timers
+            cannonTimer: 10 + Math.random() * 7,
+            // Phase 3
+            damageCounter: 0,
+            // Track spawned monsters for phase 3
+            spawnedMonsterTypes: [],
+            projectiles: [],
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                const actualDamage = Math.max(1, amount - this.defense);
+                this.health -= actualDamage;
+                this.hitFlash = 0.2;
+                if (this.phase === 3) {
+                    this.damageCounter += actualDamage;
+                }
+                if (this.health <= 0 && !this.dead) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _updateElementKingAI(e, dt, playerPos) {
+        // 阶段切换
+        if (e.phase === 1 && !e.phase2Triggered && e.health <= 0) {
+            e.phase2Triggered = true;
+            e.phase = 2;
+            e.health = 2000;
+            e.maxHealth = 2000;
+            e.defense = 7;
+            e.damage = 35;
+            // 眼睛变色
+            e.eyeMatL.color.setHex(0xff8800);
+            e.eyeMatR.color.setHex(0xff8800);
+            e.coreMat.color.setHex(0xff6600);
+            if (window.game) window.game.onMessage('👑 元素王进入第2阶段！');
+        }
+        if (e.phase === 2 && !e.phase3Triggered && e.health <= 0) {
+            e.phase3Triggered = true;
+            e.phase = 3;
+            e.health = 3000;
+            e.maxHealth = 3000;
+            e.defense = 7;
+            e.damage = 45;
+            e.eyeMatL.color.setHex(0xff0000);
+            e.eyeMatR.color.setHex(0xff0000);
+            e.coreMat.color.setHex(0xff0000);
+            if (window.game) window.game.onMessage('👑 元素王进入最终阶段！');
+        }
+
+        // 受击闪烁
+        if (e.hitFlash > 0) {
+            e.hitFlash -= dt;
+            e.bodyMat.emissive.setHex(0x442200);
+            if (e.hitFlash <= 0) e.bodyMat.emissive.setHex(0x1a0a00);
+            this._updateHealthBar(e);
+        }
+
+        // 不移动 - 固定位置
+        // 朝向玩家
+        const dirToPlayer = playerPos.clone().sub(e.mesh.position);
+        dirToPlayer.y = 0;
+        e.mesh.rotation.y = Math.atan2(dirToPlayer.x, dirToPlayer.z);
+
+        // 更新弹射物
+        this._updateElementKingProjectiles(e, dt);
+
+        // 近战攻击
+        e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+        const distToPlayer = e.mesh.position.distanceTo(playerPos);
+        if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+            e.attackCooldown = 2.0;
+            this._bossDamagePlayers(e.damage, e);
+        }
+
+        // ===== Phase 1 技能 =====
+        if (e.phase >= 1) {
+            // 树精木球技能
+            e.bossSkillTimer -= dt;
+            if (e.bossSkillTimer <= 0) {
+                e.bossSkillTimer = 10;
+                for (let b = 0; b < 3; b++) {
+                    this._spawnWoodBall(e);
+                }
+            }
+
+            // 激活周围树木 (4-18s)
+            e.treeActivateTimer -= dt;
+            if (e.treeActivateTimer <= 0) {
+                e.treeActivateTimer = 4 + Math.random() * 14;
+                this._activateTreesAround(e, 50);
+            }
+
+            // 吐出木方块 (5-8s)
+            e.woodBlockTimer -= dt;
+            if (e.woodBlockTimer <= 0) {
+                e.woodBlockTimer = 5 + Math.random() * 3;
+                this._spawnWoodBlock(e, playerPos);
+            }
+        }
+
+        // ===== Phase 2 技能 =====
+        if (e.phase >= 2) {
+            // 石巨人石球技能
+            e.cannonTimer -= dt;
+            if (e.cannonTimer <= 0) {
+                e.cannonTimer = 10 + Math.random() * 7;
+                this._spawnCannonStone(e, playerPos);
+            }
+        }
+
+        // ===== Phase 3 技能 =====
+        if (e.phase >= 3) {
+            // 每4点玩家伤害召唤3个随机怪物
+            if (e.damageCounter >= 4) {
+                e.damageCounter -= 4;
+                this._summonRandomMonsters(e, 3);
+            }
+        }
+    }
+
+    _activateTreesAround(boss, radius) {
+        if (!this.world.trees) return;
+        const bx = boss.mesh.position.x;
+        const bz = boss.mesh.position.z;
+        let activated = 0;
+        for (const tree of this.world.trees) {
+            if (tree.activated || tree.dead) continue;
+            const dx = tree.position.x - bx;
+            const dz = tree.position.z - bz;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < radius) {
+                // 激活树为生物形态
+                tree.activated = true;
+                const tx = tree.position.x;
+                const tz = tree.position.z;
+                const ty = this.world.getHeight(tx, tz);
+                this._spawnActivatedTree(tx, ty, tz, boss);
+                activated++;
+            }
+        }
+        if (activated > 0 && window.game) {
+            window.game.onMessage(`🌳 元素王激活了${activated}棵树！`);
+        }
+    }
+
+    _spawnActivatedTree(x, y, z, boss) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+
+        const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 10);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.85, flatShading: false });
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.y = 0.75;
+        trunk.castShadow = true;
+        group.add(trunk);
+
+        const leafGeo = new THREE.IcosahedronGeometry(0.8, 2);
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.7, flatShading: false });
+        const leaves = new THREE.Mesh(leafGeo, leafMat);
+        leaves.position.y = 1.8;
+        leaves.castShadow = true;
+        group.add(leaves);
+
+        const eyeGeo = new THREE.SphereGeometry(0.06, 8, 6);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+        const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeL.position.set(-0.1, 1.0, 0.3);
+        group.add(eyeL);
+        const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+        eyeR.position.set(0.1, 1.0, 0.3);
+        group.add(eyeR);
+
+        this._applyRetro(group);
+        this.scene.add(group);
+
+        const enemy = {
+            mesh: group,
+            health: 50,
+            maxHealth: 50,
+            speed: 2.0,
+            damage: 50,
+            attackRange: 2.0,
+            attackCooldown: 0,
+            dead: false,
+            state: 'chase',
+            wanderDir: new THREE.Vector3(),
+            wanderTimer: 0,
+            bodyMat: trunkMat,
+            hitFlash: 0,
+            enemyType: 'activated_tree',
+            playerHit: false,
+            burning: false,
+            dropsAwarded: false,
+            defense: 0,
+            weakToAxe: true,
+            elementKingBoss: boss,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                // 斧头克制
+                const actualDamage = amount;
+                this.health -= actualDamage;
+                this.hitFlash = 0.2;
+                if (this.health <= 0) {
+                    this.dead = true;
+                    this.deathTimer = 0;
+                    // 元素王增益
+                    if (this.elementKingBoss && !this.elementKingBoss.dead) {
+                        this.elementKingBoss.damage += 3;
+                        const hpBonus = 10;
+                        if (this.elementKingBoss.health + hpBonus <= this.elementKingBoss.maxHealth) {
+                            this.elementKingBoss.health += hpBonus;
+                        }
+                    }
+                }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnWoodBlock(boss, playerPos) {
+        const enemyPos = boss.mesh.position.clone();
+        enemyPos.y += 4.0; // 从嘴部位置
+        const dir = playerPos.clone().sub(enemyPos);
+        dir.normalize();
+
+        const blockGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+        const blockMat = new THREE.MeshStandardMaterial({ color: 0x6a4a20, roughness: 0.6, flatShading: false });
+        const block = new THREE.Mesh(blockGeo, blockMat);
+        block.position.copy(enemyPos);
+        block.castShadow = true;
+        this.scene.add(block);
+
+        boss.projectiles.push({
+            mesh: block,
+            velocity: dir.multiplyScalar(6),
+            damage: 55,
+            life: 8,
+            type: 'wood_block',
+            mat: blockMat,
+            geo: blockGeo,
+        });
+    }
+
+    _spawnCannonStone(boss, playerPos) {
+        const enemyPos = boss.mesh.position.clone();
+        enemyPos.y += 3.0;
+        const dir = playerPos.clone().sub(enemyPos);
+        dir.y = 0;
+        dir.normalize();
+
+        const stoneGeo = new THREE.DodecahedronGeometry(1.0, 1);
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6a6e74, roughness: 0.6, flatShading: false });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        stone.position.copy(enemyPos);
+        stone.castShadow = true;
+        this.scene.add(stone);
+
+        boss.projectiles.push({
+            mesh: stone,
+            velocity: dir.multiplyScalar(4),
+            damage: 90,
+            life: 10,
+            type: 'cannon_stone',
+            mat: stoneMat,
+            geo: stoneGeo,
+            hitCount: 0,
+            destructible: true,
+        });
+    }
+
+    _updateElementKingProjectiles(enemy, dt) {
+        if (!enemy.projectiles) return;
+        for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+            const p = enemy.projectiles[i];
+            p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+            p.life -= dt;
+
+            // 碰撞检测：玩家
+            const dist = p.mesh.position.distanceTo(this.player.position);
+            const hitRadius = p.type === 'wood_block' ? 1.2 : (p.type === 'cannon_stone' ? 1.5 : 0.8);
+            if (dist < hitRadius) {
+                this._bossDamagePlayers(p.damage, enemy);
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+                continue;
+            }
+
+            // 地面碰撞
+            const groundY = this.world.getHeight(p.mesh.position.x, p.mesh.position.z);
+            if (p.mesh.position.y < groundY) {
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+                continue;
+            }
+
+            if (p.life <= 0) {
+                this.scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mat.dispose();
+                enemy.projectiles.splice(i, 1);
+            }
+        }
+    }
+
+    _summonRandomMonsters(boss, count) {
+        // 从之前召唤过的怪物类型中随机选择
+        const availableTypes = boss.spawnedMonsterTypes.length > 0 ? boss.spawnedMonsterTypes : ['tree_guardian', 'stone_monster'];
+        const pos = boss.mesh.position;
+        for (let i = 0; i < count; i++) {
+            const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 5 + Math.random() * 5;
+            const sx = pos.x + Math.cos(ang) * dist;
+            const sz = pos.z + Math.sin(ang) * dist;
+            const sy = this.world.getHeight(sx, sz);
+            switch (type) {
+                case 'tree_guardian':
+                case 'tree_guardian_enhanced':
+                    this._spawnTreeGuardian(sx, sy, sz);
+                    break;
+                case 'stone_monster':
+                    this._spawnStoneMonster(sx, sy, sz);
+                    break;
+                case 'stone_guardian':
+                    this._spawnStoneGuardian(sx, sy, sz);
+                    break;
+                case 'gold_monster':
+                    this._spawnGoldMonster(sx, sy, sz);
+                    break;
+                case 'zombie':
+                    this._spawnZombie(sx, sy, sz);
+                    break;
+                default:
+                    this._spawnTreeGuardian(sx, sy, sz);
+                    break;
+            }
+            if (!boss.spawnedMonsterTypes.includes(type)) {
+                boss.spawnedMonsterTypes.push(type);
+            }
+        }
+        if (window.game) window.game.onMessage('👑 元素王召唤了怪物！');
     }
 
     _spawnEnhancedTreeGuardian(x, y, z) {
@@ -2884,11 +3634,28 @@ class EnemySystem {
     }
 
     update(dt) {
+        // 娱乐场中不刷怪、不更新敌人
+        if (window.game && window.game.isArcade && !window.game.arcadeZombie?.active) return;
+        // 打怪小游戏：持续刷新僵尸
+        if (window.game && window.game.isArcade && window.game.arcadeZombie?.active) {
+            this.spawnTimer += dt;
+            if (this.spawnTimer >= 2) {
+                this.spawnTimer = 0;
+                const playerPos = this.player.position;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 15 + Math.random() * 10;
+                const x = playerPos.x + Math.cos(angle) * dist;
+                const z = playerPos.z + Math.sin(angle) * dist;
+                const y = this.world.getHeight(x, z);
+                this._spawnZombie(x, y, z);
+            }
+        }
+
         // 石头世界：生成石之怪和石化人
         if (this.world.worldType === 'stone') {
             // 清除非石头世界敌人（保留树精和树士卫）
             for (const e of this.enemies) {
-                if (!e.dead && e.enemyType !== 'stone_monster' && e.enemyType !== 'petrified_human' && e.enemyType !== 'tree_spirit' && e.enemyType !== 'tree_guardian' && e.enemyType !== 'tree_guardian_enhanced' && e.enemyType !== 'stone_guardian') { e.dead = true; e.deathTimer = 2; }
+                if (!e.dead && e.enemyType !== 'stone_monster' && e.enemyType !== 'petrified_human' && e.enemyType !== 'tree_spirit' && e.enemyType !== 'tree_guardian' && e.enemyType !== 'tree_guardian_enhanced' && e.enemyType !== 'stone_guardian' && e.enemyType !== 'stone_monster_boss' && e.enemyType !== 'giant_stone_boss' && e.enemyType !== 'zombie') { e.dead = true; e.deathTimer = 2; }
             }
             // 生成石之怪和石化人
             this.spawnTimer += dt;
@@ -3057,6 +3824,10 @@ class EnemySystem {
                                 this._bossDamagePlayers(e.damage, e);
                             } else {
                                 this.player.takeDamage(e.damage, e);
+                                // 沙漠僵尸每次攻击减少 15 点水量（口渴值）
+                                if (e.enemyType === 'desert_zombie' && window.game && window.game.survival) {
+                                    window.game.survival.thirst = Math.max(0, window.game.survival.thirst - 15);
+                                }
                             }
                         }
                         // 石志怪boss远程攻击玩家（检测到就发射，每5秒1次）
@@ -3079,11 +3850,168 @@ class EnemySystem {
             return;
         }
 
+        // 冰刺维度：只刷新冰小球，不刷普通怪物
+        if (this.world.worldType === 'ice') {
+            // 清除非冰维度敌人
+            for (const e of this.enemies) {
+                if (!e.dead && e.enemyType !== 'ice_ball') { e.dead = true; e.deathTimer = 2; }
+            }
+            // 更新冰维度敌人
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const e = this.enemies[i];
+                if (e.dead) {
+                    this._awardDrops(e);
+                    if (e.healthBar) e.healthBar.sprite.visible = false;
+                    e.deathTimer = (e.deathTimer || 0) + dt;
+                    e.mesh.position.y -= dt * 2;
+                    if (e.deathTimer > 1.5) {
+                        this.scene.remove(e.mesh);
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                if (e.enemyType !== 'ice_ball') {
+                    e.deathTimer = (e.deathTimer || 0) + dt;
+                    if (e.deathTimer > 1.5) {
+                        if (e.mesh) {
+                            this.world.scene.remove(e.mesh);
+                            e.mesh.traverse(c => {
+                                if (c.geometry) c.geometry.dispose();
+                                if (c.material) c.material.dispose();
+                            });
+                        }
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                // 受击闪烁
+                if (e.hitFlash > 0) {
+                    e.hitFlash -= dt;
+                    this._updateHealthBar(e);
+                }
+                e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+                // 贴地
+                e.mesh.position.y = this.world.getHeight(e.mesh.position.x, e.mesh.position.z);
+                const playerPos = this.player.position;
+                const distToPlayer = e.mesh.position.distanceTo(playerPos);
+                if (e.aggroed) {
+                    // 被激怒：追击玩家
+                    const dir = playerPos.clone().sub(e.mesh.position);
+                    dir.y = 0;
+                    dir.normalize();
+                    e.mesh.position.x += dir.x * e.speed * dt;
+                    e.mesh.position.z += dir.z * e.speed * dt;
+                    e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                    if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+                        e.attackCooldown = 1.5;
+                        this.player.takeDamage(e.damage, e);
+                    }
+                } else {
+                    // 中立：漫游
+                    e.wanderTimer = (e.wanderTimer || 0) - dt;
+                    if (e.wanderTimer <= 0) {
+                        e.wanderTimer = 2 + Math.random() * 3;
+                        const a = Math.random() * Math.PI * 2;
+                        e.wanderDir.set(Math.cos(a), 0, Math.sin(a));
+                    }
+                    e.mesh.position.x += e.wanderDir.x * e.speed * 0.3 * dt;
+                    e.mesh.position.z += e.wanderDir.z * e.speed * 0.3 * dt;
+                }
+            }
+            return;
+        }
+
+        // 洞穴世界：更新洞穴怪物
+        if (this.world.worldType === 'cave') {
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const e = this.enemies[i];
+                if (e.dead) {
+                    this._awardDrops(e);
+                    if (e.healthBar) e.healthBar.sprite.visible = false;
+                    e.deathTimer = (e.deathTimer || 0) + dt;
+                    e.mesh.position.y -= dt * 2;
+                    if (e.deathTimer > 1.5) {
+                        this.scene.remove(e.mesh);
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                // 清除非洞穴敌人
+                if (!e.enemyType || !e.enemyType.startsWith('cave_')) {
+                    e.deathTimer = (e.deathTimer || 0) + dt;
+                    if (e.deathTimer > 1.5) {
+                        if (e.mesh) {
+                            this.world.scene.remove(e.mesh);
+                            e.mesh.traverse(c => {
+                                if (c.geometry) c.geometry.dispose();
+                                if (c.material) c.material.dispose();
+                            });
+                        }
+                        this.enemies.splice(i, 1);
+                    }
+                    continue;
+                }
+                // hitFlash
+                if (e.hitFlash > 0) {
+                    e.hitFlash -= dt;
+                    this._updateHealthBar(e);
+                }
+                e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+                // 蝙蝠飞行
+                if (e.enemyType === 'cave_bat') {
+                    e._flyPhase += dt * 5;
+                    e.mesh.position.y = this.world.getHeight(e.mesh.position.x, e.mesh.position.z) + 2 + Math.sin(e._flyPhase) * 0.3;
+                } else if (e.enemyType === 'cave_slime') {
+                    e._bouncePhase += dt * 4;
+                    const bounce = Math.abs(Math.sin(e._bouncePhase)) * 0.2;
+                    e.mesh.position.y = this.world.getHeight(e.mesh.position.x, e.mesh.position.z) + bounce;
+                } else {
+                    // 重力
+                    e.mesh.position.y -= 15 * dt;
+                    let groundY = this.world.getHeight(e.mesh.position.x, e.mesh.position.z);
+                    if (e.mesh.position.y < groundY) e.mesh.position.y = groundY;
+                }
+                // 追击玩家
+                const playerPos = this.player.position;
+                const distToPlayer = e.mesh.position.distanceTo(playerPos);
+                const aggroRange = e.enemyType === 'cave_giant' ? 15 : 20;
+                if (distToPlayer < aggroRange) {
+                    const dir = playerPos.clone().sub(e.mesh.position);
+                    dir.y = 0;
+                    dir.normalize();
+                    if (e.enemyType !== 'cave_bat') {
+                        e.mesh.position.x += dir.x * e.speed * dt;
+                        e.mesh.position.z += dir.z * e.speed * dt;
+                    } else {
+                        e.mesh.position.x += dir.x * e.speed * dt;
+                        e.mesh.position.z += dir.z * e.speed * dt;
+                    }
+                    e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                    if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+                        e.attackCooldown = 1.5;
+                        this.player.takeDamage(e.damage, e);
+                    }
+                } else {
+                    // 漫游
+                    e.wanderTimer = (e.wanderTimer || 0) - dt;
+                    if (e.wanderTimer <= 0) {
+                        e.wanderTimer = 2 + Math.random() * 3;
+                        const a = Math.random() * Math.PI * 2;
+                        e.wanderDir = e.wanderDir || new THREE.Vector3();
+                        e.wanderDir.set(Math.cos(a), 0, Math.sin(a));
+                    }
+                    e.mesh.position.x += (e.wanderDir?.x || 0) * e.speed * 0.3 * dt;
+                    e.mesh.position.z += (e.wanderDir?.z || 0) * e.speed * 0.3 * dt;
+                }
+            }
+            return;
+        }
+
         // 金维度：生成金之怪/金树精
         if (this.world.worldType === 'gold') {
             // 清除非金维度敌人
             for (const e of this.enemies) {
-                if (!e.dead && e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') { e.dead = true; e.deathTimer = 2; }
+                if (!e.dead && e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit' && e.enemyType !== 'element_king' && e.enemyType !== 'activated_tree' && e.enemyType !== 'gold_zombie') { e.dead = true; e.deathTimer = 2; }
             }
             // 生成金之怪
             this.spawnTimer += dt;
@@ -3115,7 +4043,7 @@ class EnemySystem {
                     }
                     continue;
                 }
-                if (e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit') {
+                if (e.enemyType !== 'gold_monster' && e.enemyType !== 'gold_tree_spirit' && e.enemyType !== 'element_king' && e.enemyType !== 'activated_tree') {
                     // 清除非金维度敌人的死亡动画
                     e.deathTimer += dt;
                     if (e.deathTimer > 1.5) {
@@ -3180,7 +4108,7 @@ class EnemySystem {
                             } else {
                                 const enemyPos = e.mesh.position.clone(); enemyPos.y += 1.8;
                                 const dir2 = playerPos.clone().sub(enemyPos).normalize();
-                                const wood = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.9), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 }));
+                                const wood = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.9), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.3, roughness: 0.3 }));
                                 wood.position.copy(enemyPos);
                                 wood.rotation.y = Math.atan2(dir2.x, dir2.z);
                                 wood.castShadow = true; this.scene.add(wood);
@@ -3223,13 +4151,41 @@ class EnemySystem {
                         }
                     }
                 }
+                // 元素王boss AI
+                if (e.enemyType === 'element_king' && !e.dead) {
+                    this._updateElementKingAI(e, dt, this.player.position);
+                    continue;
+                }
+                // 激活树AI - 追击玩家
+                if (e.enemyType === 'activated_tree' && !e.dead) {
+                    if (e.hitFlash > 0) {
+                        e.hitFlash -= dt;
+                        e.bodyMat.emissive.setHex(0x441100);
+                        if (e.hitFlash <= 0) e.bodyMat.emissive.setHex(0x000000);
+                        this._updateHealthBar(e);
+                    }
+                    e.attackCooldown = Math.max(0, e.attackCooldown - dt);
+                    const pPos = this.player.position;
+                    const dToP = e.mesh.position.distanceTo(pPos);
+                    if (dToP < 20) {
+                        const dir = pPos.clone().sub(e.mesh.position);
+                        dir.y = 0;
+                        dir.normalize();
+                        e.mesh.position.x += dir.x * e.speed * dt;
+                        e.mesh.position.z += dir.z * e.speed * dt;
+                        e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                        if (dToP < e.attackRange && e.attackCooldown <= 0) {
+                            e.attackCooldown = 1.5;
+                            this._bossDamagePlayers(e.damage, e);
+                        }
+                    }
+                    continue;
+                }
             }
             return;
         }
-
-        // 普通世界：清除石头世界敌人
         for (const e of this.enemies) {
-            if (!e.dead && (e.enemyType === 'stone_monster' || e.enemyType === 'petrified_human')) { e.dead = true; e.deathTimer = 2; }
+            if (!e.dead && (e.enemyType === 'stone_monster' || e.enemyType === 'petrified_human' || e.enemyType === 'ice_ball')) { e.dead = true; e.deathTimer = 2; }
         }
 
         this.spawnTimer += dt;
@@ -3255,11 +4211,32 @@ class EnemySystem {
             }
         }
 
+        // 白天沙漠群系刷新骆驼
+        this.camelSpawnTimer += dt;
+        if (!this.world.isNight && this.camelSpawnTimer >= this.camelSpawnInterval) {
+            this.camelSpawnTimer = 0;
+            const maxCamels = 2;
+            const camelCount = this.enemies.filter(e => !e.dead && e.enemyType === 'camel').length;
+            if (camelCount < maxCamels) {
+                const playerPos = this.player.position;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 25 + Math.random() * 20;
+                const x = playerPos.x + Math.cos(angle) * dist;
+                const z = playerPos.z + Math.sin(angle) * dist;
+                const cx = Math.floor(x / this.world.chunkSize);
+                const cz = Math.floor(z / this.world.chunkSize);
+                if (this.world.isDesertBiome(cx, cz)) {
+                    const y = this.world.getHeight(x, z);
+                    if (y > -0.5) this._spawnCamel(x, y, z);
+                }
+            }
+        }
+
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
 
-            // 白天燃烧：每秒损失2血，不会立即消失（树士卫/树精免疫）
-            if (!this.world.isNight && !e.dead && e.enemyType !== 'tree_guardian' && e.enemyType !== 'tree_guardian_enhanced' && e.enemyType !== 'tree_spirit' && e.enemyType !== 'cow' && e.enemyType !== 'giant_stone_boss' && e.enemyType !== 'fake_tree') {
+            // 白天燃烧：每秒损失2血，不会立即消失（树士卫/树精/牛/骆驼免疫）
+            if (!this.world.isNight && !e.dead && e.enemyType !== 'tree_guardian' && e.enemyType !== 'tree_guardian_enhanced' && e.enemyType !== 'tree_spirit' && e.enemyType !== 'cow' && e.enemyType !== 'camel' && e.enemyType !== 'giant_stone_boss' && e.enemyType !== 'fake_tree') {
                 e.burning = true;
                 this._setBurningEffect(e, true);
                 e.health -= 2 * dt;
@@ -3280,6 +4257,15 @@ class EnemySystem {
                 if (e.healthBar) e.healthBar.sprite.visible = false;
                 e.deathTimer = (e.deathTimer || 0) + dt;
                 e.mesh.position.y -= dt * 2;
+                // 打怪小游戏：击杀僵尸获得积分
+                if (e.enemyType === 'zombie' && window.game && window.game.isArcade && window.game.arcadeZombie?.active) {
+                    window.game.arcadeZombie.score += 10;
+                    if (window.game.ui && window.game.ui.updateZombieScore) window.game.ui.updateZombieScore();
+                }
+                if (e.enemyType === 'camel' && this.player.mount === e) {
+                    this.player.dismount();
+                    if (window.game) window.game.onMessage('骆驼倒下了，你被甩了下来');
+                }
                 if (e.deathTimer > 1.5) {
                     this.scene.remove(e.mesh);
                     this.enemies.splice(i, 1);
@@ -3341,7 +4327,7 @@ class EnemySystem {
                 const dz = e.mesh.position.z - b.mesh.position.z;
                 let colHeight = 3, colRadius = 1.0;
                 if (b.type === 'campfire') { colHeight = 0.5; colRadius = 0.6; }
-                else if (b.type === 'wall_wood' || b.type === 'wall_stone') { colHeight = 3; colRadius = 1.0; }
+                else if (b.type === 'wall_wood' || b.type === 'wall_stone') { colHeight = 1; colRadius = 0.5; }
                 else if (b.type === 'knowledge_bookshelf') { colHeight = 2; colRadius = 0.8; }
                 else if (b.type === 'auto_miner') { colHeight = 1.5; colRadius = 0.7; }
                 else if (b.type === 'chest') { colHeight = 1; colRadius = 0.6; }
@@ -3366,7 +4352,7 @@ class EnemySystem {
                 const dz = e.mesh.position.z - b.mesh.position.z;
                 let colHeight = 3, colRadius = 1.0;
                 if (b.type === 'campfire') { colHeight = 0.5; colRadius = 0.6; }
-                else if (b.type === 'wall_wood' || b.type === 'wall_stone') { colHeight = 3; colRadius = 1.0; }
+                else if (b.type === 'wall_wood' || b.type === 'wall_stone') { colHeight = 1; colRadius = 0.5; }
                 else if (b.type === 'knowledge_bookshelf') { colHeight = 2; colRadius = 0.8; }
                 else if (b.type === 'auto_miner') { colHeight = 1.5; colRadius = 0.7; }
                 else if (b.type === 'chest') { colHeight = 1; colRadius = 0.6; }
@@ -3401,6 +4387,35 @@ class EnemySystem {
             // AI
             const playerPos = this.player.position;
             const distToPlayer = e.mesh.position.distanceTo(playerPos);
+
+            // 骆驼AI：被骑乘时跟随玩家，未被骑乘时闲逛
+            if (e.enemyType === 'camel' && !e.dead) {
+                if (e === this.player.mount) {
+                    e.mesh.position.x = this.player.position.x;
+                    e.mesh.position.z = this.player.position.z;
+                    e.mesh.position.y = this.world.getHeight(e.mesh.position.x, e.mesh.position.z);
+                    e.mesh.rotation.y = this.player.yaw;
+                } else {
+                    // 被驯服后偶尔向玩家靠近
+                    if (e.tamed && distToPlayer < 20 && distToPlayer > 4) {
+                        const toPlayer = playerPos.clone().sub(e.mesh.position);
+                        toPlayer.y = 0; toPlayer.normalize();
+                        e.mesh.position.x += toPlayer.x * e.speed * 0.5 * dt;
+                        e.mesh.position.z += toPlayer.z * e.speed * 0.5 * dt;
+                        e.mesh.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+                    } else {
+                        e.wanderTimer -= dt;
+                        if (e.wanderTimer <= 0) {
+                            e.wanderTimer = 2 + Math.random() * 3;
+                            const a = Math.random() * Math.PI * 2;
+                            e.wanderDir.set(Math.cos(a), 0, Math.sin(a));
+                        }
+                        e.mesh.position.x += e.wanderDir.x * e.speed * 0.3 * dt;
+                        e.mesh.position.z += e.wanderDir.z * e.speed * 0.3 * dt;
+                    }
+                }
+                continue;
+            }
 
             // 牛：逃跑AI
             if (e.enemyType === 'cow') {
@@ -3566,24 +4581,55 @@ class EnemySystem {
                 if (foundTreeTarget) continue;
             }
 
-            if (distToPlayer < 15) {
+            // 怪物优先攻击玩家骑乘的骆驼或附近驯服的骆驼
+            let targetPos = playerPos;
+            let distToTarget = distToPlayer;
+            let attackTarget = null;
+            const playerMount = this.player.mount;
+            if (playerMount && !playerMount.dead) {
+                const d = e.mesh.position.distanceTo(playerMount.mesh.position);
+                targetPos = playerMount.mesh.position;
+                distToTarget = d;
+                attackTarget = playerMount;
+            } else {
+                let closestCamel = null;
+                let closestCamelDist = Infinity;
+                for (const other of this.enemies) {
+                    if (other.dead || other.enemyType !== 'camel' || !other.tamed) continue;
+                    const d = e.mesh.position.distanceTo(other.mesh.position);
+                    if (d < 25 && d < closestCamelDist) {
+                        closestCamelDist = d;
+                        closestCamel = other;
+                    }
+                }
+                if (closestCamel && closestCamelDist < distToPlayer) {
+                    targetPos = closestCamel.mesh.position;
+                    distToTarget = closestCamelDist;
+                    attackTarget = closestCamel;
+                }
+            }
+
+            if (distToTarget < 15) {
                 e.state = 'chase';
-            } else if (e.state === 'chase' && distToPlayer > 25) {
+            } else if (e.state === 'chase' && distToTarget > 25) {
                 e.state = 'idle';
             }
 
             if (e.state === 'chase') {
-                const dir = playerPos.clone().sub(e.mesh.position);
+                const dir = targetPos.clone().sub(e.mesh.position);
                 dir.y = 0;
                 dir.normalize();
                 e.mesh.position.x += dir.x * e.speed * dt;
                 e.mesh.position.z += dir.z * e.speed * dt;
-                // 朝向玩家
                 e.mesh.rotation.y = Math.atan2(dir.x, dir.z);
 
-                if (distToPlayer < e.attackRange && e.attackCooldown <= 0) {
+                if (distToTarget < e.attackRange && e.attackCooldown <= 0) {
                     e.attackCooldown = 1.5;
-                    this._bossDamagePlayers(e.damage, e);
+                    if (attackTarget) {
+                        attackTarget.takeDamage(e.damage, e);
+                    } else {
+                        this._bossDamagePlayers(e.damage, e);
+                    }
                 }
             } else {
                 // 闲置游走
@@ -3651,7 +4697,7 @@ class EnemySystem {
         enemy.dropsAwarded = true;
 
         // Boss死亡同步到多人游戏
-        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_tree_spirit') {
+        if (enemy.enemyType === 'stone_monster_boss' || enemy.enemyType === 'giant_stone_boss' || enemy.enemyType === 'tree_spirit' || enemy.enemyType === 'gold_zombie' || enemy.enemyType === 'gold_tree_spirit' || enemy.enemyType === 'element_king') {
             if (window.game.multiplayer && window.game.multiplayer.connected) {
                 window.game.multiplayer.sendBossDeath(enemy.enemyType);
             }
@@ -3758,6 +4804,64 @@ class EnemySystem {
             if (Math.random() < 0.10) divineCount += 2;
             window.game.inventory.addItem('divine_wood', divineCount);
             window.game.onMessage(`击杀假树! 获得${divineCount}个神木`);
+        } else if (enemy.enemyType === 'element_king') {
+            let msg = '👑 击杀元素王!';
+            if (Math.random() < 0.82) {
+                window.game.inventory.addItem('element_wood', 1);
+                msg += ' 获得1个元素木';
+            }
+            if (Math.random() < 0.42) {
+                window.game.inventory.addItem('element_stone', 1);
+                msg += '，1个元素石';
+            }
+            if (Math.random() < 0.12) {
+                window.game.inventory.addItem('element_gold', 1);
+                msg += '，1个元素金';
+            }
+            window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'cave_spider') {
+            window.game.inventory.addItem('spider_silk', 2);
+            let msg = '击杀洞穴蜘蛛! 获得2个蛛丝';
+            if (Math.random() < 0.30) {
+                window.game.inventory.addItem('poison', 1);
+                msg += '，1个毒液';
+            }
+            window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'cave_bat') {
+            window.game.inventory.addItem('spider_silk', 1);
+            window.game.onMessage('击杀蝙蝠! 获得1个蛛丝');
+        } else if (enemy.enemyType === 'cave_skeleton') {
+            window.game.inventory.addItem('bone', 3);
+            let msg = '击杀骷髅! 获得3个骨头';
+            if (Math.random() < 0.50) {
+                window.game.inventory.addItem('arrow', 2);
+                msg += '，2支箭矢';
+            }
+            if (Math.random() < 0.20) {
+                window.game.inventory.addItem('cave_key', 1);
+                msg += '，1把洞穴钥匙!';
+            }
+            window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'cave_slime') {
+            window.game.inventory.addItem('slime_ball', 1);
+            let msg = '击杀史莱姆! 获得1个粘液球';
+            if (Math.random() < 0.30) {
+                window.game.inventory.addItem('slime_ball', 1);
+                msg += '，再获得1个粘液球';
+            }
+            window.game.onMessage(msg);
+        } else if (enemy.enemyType === 'cave_giant') {
+            window.game.inventory.addItem('diamond', 1);
+            window.game.inventory.addItem('cold_iron', 3);
+            window.game.onMessage('击杀洞穴巨人! 获得1个钻石、3个寒铁');
+        } else if (enemy.enemyType === 'activated_tree') {
+            window.game.inventory.addItem('wood', 3);
+            let msg = '击杀激活树! 获得3个木材';
+            if (Math.random() < 0.50) {
+                window.game.inventory.addItem('rare_wood', 1);
+                msg += '，1个稀有木材';
+            }
+            window.game.onMessage(msg);
         } else {
             if (Math.random() < 0.5) window.game.inventory.addItem('meat_raw', 1);
             if (Math.random() < 0.0793) window.game.inventory.addItem('stone', 1);
@@ -3765,11 +4869,258 @@ class EnemySystem {
         }
     }
 
+    // ===== 洞穴怪物 =====
+    _spawnCaveSpider(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a1a3a, roughness: 0.7, flatShading: false });
+        // 身体
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), bodyMat);
+        body.position.y = 0.5; body.scale.set(1, 0.6, 1); body.castShadow = true; group.add(body);
+        // 头
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 10, 8), bodyMat);
+        head.position.set(0, 0.7, 0.3); head.castShadow = true; group.add(head);
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        for (const [ex, ez] of [[-0.1, 0.5], [0.1, 0.5]]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), eyeMat);
+            eye.position.set(ex, 0.75, ez); group.add(eye);
+        }
+        // 8条腿
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x1a0a2a, roughness: 0.8 });
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.8, 4), legMat);
+            leg.position.set(Math.cos(angle) * 0.35, 0.3, Math.sin(angle) * 0.35);
+            leg.rotation.z = Math.cos(angle) * 0.5;
+            leg.rotation.x = Math.sin(angle) * 0.5;
+            group.add(leg);
+        }
+        this._applyRetro(group);
+        this.scene.add(group);
+        const enemy = {
+            mesh: group, health: 20, maxHealth: 20,
+            speed: 6, damage: 5, attackRange: 1.5, attackCooldown: 0,
+            dead: false, state: 'chase', enemyType: 'cave_spider',
+            playerHit: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnIceBall(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        // 冰球身体
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x99ddff, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.9 });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), bodyMat);
+        body.position.y = 0.5; body.castShadow = true; group.add(body);
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x224466 });
+        for (const ex of [-0.15, 0.15]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), eyeMat);
+            eye.position.set(ex, 0.6, 0.42); group.add(eye);
+        }
+        this._applyRetro(group);
+        this.scene.add(group);
+        const self = this;
+        const enemy = {
+            mesh: group, health: 50, maxHealth: 50,
+            speed: 4, damage: 8, attackRange: 1.5, attackCooldown: 0,
+            dead: false, state: 'wander', enemyType: 'ice_ball',
+            playerHit: false, aggroed: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            wanderTimer: 0, wanderDir: new THREE.Vector3(),
+            takeDamage(amount, attacker = null) {
+                if (attacker) {
+                    this.playerHit = true;
+                    this.aggroed = true;
+                    // 集体仇恨：25m内的冰小球一起反击
+                    for (const other of self.enemies) {
+                        if (other !== this && !other.dead && other.enemyType === 'ice_ball') {
+                            if (other.mesh.position.distanceTo(this.mesh.position) <= 25) {
+                                other.aggroed = true;
+                            }
+                        }
+                    }
+                }
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnCaveBat(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y + 2, z);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8, flatShading: false });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), bodyMat);
+        body.castShadow = true; group.add(body);
+        // 翅膀
+        const wingMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9, side: THREE.DoubleSide });
+        for (const side of [-1, 1]) {
+            const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.4), wingMat);
+            wing.position.set(side * 0.4, 0, 0);
+            wing.rotation.y = side * 0.3;
+            group.add(wing);
+        }
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+        for (const ex of [-0.1, 0.1]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), eyeMat);
+            eye.position.set(ex, 0.05, 0.2); group.add(eye);
+        }
+        this._applyRetro(group);
+        this.scene.add(group);
+        const enemy = {
+            mesh: group, health: 12, maxHealth: 12,
+            speed: 8, damage: 4, attackRange: 1.2, attackCooldown: 0,
+            dead: false, state: 'chase', enemyType: 'cave_bat',
+            playerHit: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            _flyPhase: Math.random() * Math.PI * 2,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnCaveSkeleton(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xd0d0c0, roughness: 0.5, flatShading: false });
+        // 身体（胸腔）
+        for (let i = 0; i < 3; i++) {
+            const rib = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.04), boneMat);
+            rib.position.set(0, 0.9 - i * 0.12, 0.2); group.add(rib);
+        }
+        // 脊柱
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), boneMat);
+        spine.position.y = 0.85; group.add(spine);
+        // 头
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), boneMat);
+        head.position.y = 1.4; head.castShadow = true; group.add(head);
+        // 眼窝
+        const socketMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        for (const ex of [-0.08, 0.08]) {
+            const socket = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), socketMat);
+            socket.position.set(ex, 1.45, 0.18); group.add(socket);
+        }
+        // 四肢
+        for (const side of [-1, 1]) {
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 6), boneMat);
+            arm.position.set(side * 0.25, 0.8, 0); group.add(arm);
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.7, 6), boneMat);
+            leg.position.set(side * 0.12, 0.35, 0); group.add(leg);
+        }
+        // 弓
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 4, 8, Math.PI), boneMat);
+        bow.position.set(0.35, 0.9, 0.1); bow.rotation.z = -0.3; group.add(bow);
+        this._applyRetro(group);
+        this.scene.add(group);
+        const enemy = {
+            mesh: group, health: 25, maxHealth: 25,
+            speed: 3, damage: 8, attackRange: 8, attackCooldown: 0,
+            dead: false, state: 'chase', enemyType: 'cave_skeleton',
+            playerHit: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            isRanged: true,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnCaveSlime(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        const slimeMat = new THREE.MeshStandardMaterial({
+            color: 0x44aa44, roughness: 0.3, transparent: true, opacity: 0.7, flatShading: false,
+        });
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8), slimeMat);
+        body.position.y = 0.4; body.scale.set(1, 0.7, 1); body.castShadow = true; group.add(body);
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        for (const ex of [-0.15, 0.15]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), eyeMat);
+            eye.position.set(ex, 0.5, 0.4); group.add(eye);
+        }
+        this._applyRetro(group);
+        this.scene.add(group);
+        const enemy = {
+            mesh: group, health: 15, maxHealth: 15,
+            speed: 2, damage: 4, attackRange: 1.3, attackCooldown: 0,
+            dead: false, state: 'chase', enemyType: 'cave_slime',
+            playerHit: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            _bouncePhase: 0,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
+    _spawnCaveGiant(x, y, z) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        const giantMat = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.85, flatShading: false });
+        // 身体
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 0.8), giantMat);
+        body.position.y = 1.5; body.castShadow = true; group.add(body);
+        // 头
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), giantMat);
+        head.position.y = 2.8; head.castShadow = true; group.add(head);
+        // 眼睛
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+        for (const ex of [-0.18, 0.18]) {
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), eyeMat);
+            eye.position.set(ex, 2.9, 0.36); group.add(eye);
+        }
+        // 四肢
+        for (const side of [-1, 1]) {
+            const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.5, 0.3), giantMat);
+            arm.position.set(side * 0.85, 1.3, 0); arm.castShadow = true; group.add(arm);
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 0.4), giantMat);
+            leg.position.set(side * 0.35, 0.6, 0); leg.castShadow = true; group.add(leg);
+        }
+        this._applyRetro(group);
+        this.scene.add(group);
+        const enemy = {
+            mesh: group, health: 80, maxHealth: 80,
+            speed: 1.5, damage: 15, attackRange: 2.5, attackCooldown: 0,
+            dead: false, state: 'chase', enemyType: 'cave_giant',
+            playerHit: false, burning: false, dropsAwarded: false, hitFlash: 0,
+            takeDamage(amount, attacker = null) {
+                if (attacker) this.playerHit = true;
+                this.health -= amount; this.hitFlash = 0.2;
+                if (this.health <= 0) { this.dead = true; this.deathTimer = 0; }
+            },
+        };
+        this.enemies.push(enemy);
+        this._createHealthBar(enemy);
+    }
+
     // 白天清除所有敌人（保留牛和友善树士卫）
     clearAll() {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
-            if (e.enemyType === 'cow' || e.enemyType === 'friendly_tree_guardian' || e.enemyType === 'gold_zombie') continue;
+            if (e.enemyType === 'cow' || e.enemyType === 'friendly_tree_guardian' || e.enemyType === 'gold_zombie' || e.enemyType === 'element_king') continue;
+            if (e.enemyType && e.enemyType.startsWith('cave_')) continue;
             this.scene.remove(e.mesh);
             this.enemies.splice(i, 1);
         }

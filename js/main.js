@@ -9,6 +9,9 @@ class Game {
         this.autoSaveTimer = 0;
         this.multiplayer = null;
         this.gameMode = 'private'; // 'private' or 'multiplayer'
+        this.renderOptEnabled = true;
+        this.achievements = {}; // { achievementId: true }
+        this.achievementProgress = {}; // { achievementId: number }
         window.game = this;
         this._init();
     }
@@ -22,7 +25,7 @@ class Game {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300);
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', alpha: false, stencil: false, depth: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.VSMShadowMap;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
@@ -70,6 +73,32 @@ class Game {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // 渲染优化开关
+        const renderOptCb = document.getElementById('renderOptCheckbox');
+        if (renderOptCb) {
+            renderOptCb.addEventListener('change', () => {
+                this.renderOptEnabled = renderOptCb.checked;
+                if (!this.renderOptEnabled) {
+                    // 关闭时恢复所有物体可见
+                    for (const key in this.world.chunks) {
+                        const chunk = this.world.chunks[key];
+                        if (chunk.mesh) chunk.mesh.visible = true;
+                    }
+                    for (const res of this.world.resources) {
+                        if (res.mesh) res.mesh.visible = true;
+                    }
+                    for (const b of this.world.buildings) {
+                        if (b.mesh) b.mesh.visible = true;
+                    }
+                    if (this.enemies && this.enemies.enemies) {
+                        for (const enemy of this.enemies.enemies) {
+                            if (enemy.mesh) enemy.mesh.visible = true;
+                        }
+                    }
+                }
+            });
+        }
 
         this.ui.showLoading(100, '完成!');
         setTimeout(() => {
@@ -165,13 +194,64 @@ class Game {
         this.ui.showHUD();
         this.player.lockMouse();
         this.ui.updateHUD();
-        if (this.multiplayer) {
-            this.ui.showChat();
-        }
+        this.ui.showChat();
     }
 
     onMessage(text) {
         // 提示已禁用
+    }
+
+    // ========== 成就系统 ==========
+    unlockAchievement(achievementId) {
+        console.log('[成就] unlockAchievement called:', achievementId, 'already:', this.achievements[achievementId]);
+        if (this.achievements[achievementId]) return;
+        const def = ACHIEVEMENTS[achievementId];
+        console.log('[成就] def:', def);
+        if (!def) return;
+        this.achievements[achievementId] = true;
+        // 右上角通知（仅自己可见）
+        this._showAchievementNotify(def);
+        // 聊天栏公共公告
+        const playerName = this.username || '玩家';
+        const chatText = `🏆 ${playerName} 达成了成就「${def.name}」！`;
+        if (this.ui) this.ui.addChatMessage('系统', chatText);
+        // 多人广播
+        if (this.multiplayer && this.multiplayer.connected) {
+            this.multiplayer.sendChat(chatText);
+        }
+    }
+
+    updateAchievementProgress(achievementId, increment = 1) {
+        if (this.achievements[achievementId]) return;
+        const def = ACHIEVEMENTS[achievementId];
+        if (!def) return;
+        this.achievementProgress[achievementId] = (this.achievementProgress[achievementId] || 0) + increment;
+        if (this.achievementProgress[achievementId] >= def.target) {
+            this.unlockAchievement(achievementId);
+        }
+    }
+
+    _showAchievementNotify(def) {
+        const container = document.getElementById('achievementNotify');
+        if (!container) return;
+        container.style.display = 'block';
+        const notif = document.createElement('div');
+        notif.style.cssText = 'background:linear-gradient(135deg,#2a4a2a,#1a3a1a);border:2px solid #ffd700;border-radius:10px;padding:12px 20px;margin-bottom:8px;box-shadow:0 4px 15px rgba(255,215,0,0.3);animation:achSlideIn 0.5s ease;';
+        notif.innerHTML = `
+            <div style="font-size:12px;color:#ffd700;margin-bottom:4px;">🏆 成就解锁</div>
+            <div style="font-size:16px;color:#fff;font-weight:bold;">${def.name}</div>
+            <div style="font-size:12px;color:#aaa;margin-top:2px;">${def.desc}</div>
+        `;
+        container.appendChild(notif);
+        setTimeout(() => {
+            notif.style.transition = 'opacity 0.5s,transform 0.5s';
+            notif.style.opacity = '0';
+            notif.style.transform = 'translateX(50px)';
+            setTimeout(() => {
+                notif.remove();
+                if (container.children.length === 0) container.style.display = 'none';
+            }, 500);
+        }, 5000);
     }
 
     logout() {
@@ -219,7 +299,55 @@ class Game {
             this._gameUpdate(dt);
         }
 
+        // 渲染优化：视锥体剔除，看不见的物体不渲染
+        if (this.renderOptEnabled) {
+            this._frustumCull();
+        }
+
         this.renderer.render(this.scene, this.camera);
+    }
+
+    _frustumCull() {
+        if (!this._frustum) this._frustum = new THREE.Frustum();
+        if (!this._projScreenMatrix) this._projScreenMatrix = new THREE.Matrix4();
+        this._projScreenMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+        this._frustum.setFromProjectionMatrix(this._projScreenMatrix);
+
+        const safeIntersect = (mesh) => {
+            if (!mesh || !mesh.geometry) return true;
+            try { return this._frustum.intersectsObject(mesh); } catch (e) { return true; }
+        };
+
+        // 剔除区块地形
+        for (const key in this.world.chunks) {
+            const chunk = this.world.chunks[key];
+            if (chunk.mesh) {
+                chunk.mesh.visible = safeIntersect(chunk.mesh);
+            }
+        }
+
+        // 剔除资源（树、石头、浆果等）
+        for (const res of this.world.resources) {
+            if (res.mesh) {
+                res.mesh.visible = safeIntersect(res.mesh);
+            }
+        }
+
+        // 剔除建筑
+        for (const b of this.world.buildings) {
+            if (b.mesh) {
+                b.mesh.visible = safeIntersect(b.mesh);
+            }
+        }
+
+        // 剔除敌人
+        if (this.enemies && this.enemies.enemies) {
+            for (const enemy of this.enemies.enemies) {
+                if (enemy.mesh) {
+                    enemy.mesh.visible = safeIntersect(enemy.mesh);
+                }
+            }
+        }
     }
 
     _gameUpdate(dt) {
@@ -262,7 +390,20 @@ class Game {
             this.player.unlockMouse();
             setTimeout(() => {
                 this.survival.respawn();
-                this.player.position.set(0, 5, 0);
+                // 在金维度死亡时返回之前的世界
+                if (this.world.worldType === 'gold') {
+                    const returnWorld = this.world._goldReturnWorld || 'normal';
+                    const returnPos = this.world._goldReturnPosition;
+                    this.world.switchToWorld(returnWorld, this.player.position);
+                    if (returnPos) {
+                        this.player.position.set(returnPos.x, returnPos.y + 5, returnPos.z);
+                    } else {
+                        this.player.position.set(0, 5, 0);
+                    }
+                    this.onMessage('死亡后回到了原来的世界');
+                } else {
+                    this.player.position.set(0, 5, 0);
+                }
                 this.player.canMove = true;
                 this.player.lockMouse();
             }, 3000);

@@ -94,6 +94,8 @@ class SaveSystem {
             buildings: this._serializeBuildings(normalBldgs),
             stoneBuildings: this._serializeBuildings(stoneBldgs),
             goldBuildings: this._serializeBuildings(goldBldgs),
+            achievements: game.achievements || {},
+            achievementProgress: game.achievementProgress || {},
         };
         try {
             localStorage.setItem(this.getSlotSaveKey(username, slot), JSON.stringify(data));
@@ -160,6 +162,7 @@ class SaveSystem {
             monumentName: b.monumentName || null,
             mysteryBoxStorage: b.mysteryBoxStorage || null,
             goldAltarStorage: b.goldAltarStorage || null,
+            forgeStorage: b.forgeStorage || null,
         }));
     }
 
@@ -195,6 +198,8 @@ class SaveSystem {
             buildings: this._serializeBuildings(normalBldgs),
             stoneBuildings: this._serializeBuildings(stoneBldgs),
             goldBuildings: this._serializeBuildings(goldBldgs),
+            achievements: game.achievements || {},
+            achievementProgress: game.achievementProgress || {},
         };
         try {
             localStorage.setItem(this.getMpSaveKey(username), JSON.stringify(data));
@@ -272,6 +277,14 @@ class SaveSystem {
             game.world.currentHour = data.world.currentHour || 8.0;
         }
 
+        // 成就
+        if (data.achievements) {
+            game.achievements = data.achievements;
+        }
+        if (data.achievementProgress) {
+            game.achievementProgress = data.achievementProgress;
+        }
+
         // 恢复建筑：先清除现有建筑，再从存档恢复
         for (const b of game.world.buildings) {
             game.scene.remove(b.mesh);
@@ -291,6 +304,7 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
         }
 
@@ -311,6 +325,7 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
             game.world._stoneBuildings = game.world.buildings.splice(normalBldgCount);
             game.world._stoneCampfires = game.world.campfires.splice(normalCfCount);
@@ -336,6 +351,7 @@ class SaveSystem {
                 if (b.monumentName) placed.monumentName = b.monumentName;
                 if (b.mysteryBoxStorage) placed.mysteryBoxStorage = b.mysteryBoxStorage;
                 if (b.goldAltarStorage) placed.goldAltarStorage = b.goldAltarStorage;
+                if (b.forgeStorage) placed.forgeStorage = b.forgeStorage;
             }
             game.world._goldBuildings = game.world.buildings.splice(normalBldgCount2);
             game.world._goldCampfires = game.world.campfires.splice(normalCfCount2);

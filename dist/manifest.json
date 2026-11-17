@@ -1,0 +1,24 @@
+{
+    "name": "世界生存",
+    "short_name": "世界生存",
+    "description": "3D生存游戏 - 在世界中生存下去",
+    "start_url": "./index.html",
+    "display": "fullscreen",
+    "orientation": "landscape",
+    "background_color": "#1a2a1a",
+    "theme_color": "#1a2a1a",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

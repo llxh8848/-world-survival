@@ -35,7 +35,7 @@ class World {
         // 太阳光
         this.sun = new THREE.DirectionalLight(0xfff5e8, 3.2);
         this.sun.castShadow = true;
-        this.sun.shadow.mapSize.set(4096, 4096);
+        this.sun.shadow.mapSize.set(2048, 2048);
         this.sun.shadow.camera.left = -90;
         this.sun.shadow.camera.right = 90;
         this.sun.shadow.camera.top = 90;
@@ -1270,6 +1270,12 @@ class World {
                 drops.wood = (drops.wood || 0) + 23;
                 drops.willow = (drops.willow || 0) + 12;
             }
+            // 最终石斧砍完树95%概率额外掉落5苹果99木材99柳条
+            if (resource.group === 'tree' && axeId === 'ultimate_stone_axe' && Math.random() < 0.95) {
+                drops.apple = (drops.apple || 0) + 5;
+                drops.wood = (drops.wood || 0) + 99;
+                drops.willow = (drops.willow || 0) + 99;
+            }
             // 确凿者砍完树80%概率额外掉落1苹果23木材12柳条
             if (resource.group === 'tree' && axeId === 'certain_one' && Math.random() < 0.80) {
                 drops.apple = (drops.apple || 0) + 1;
@@ -2086,6 +2092,7 @@ class World {
             monumentName: null,
             mysteryBoxStorage: [null, null],
             goldAltarStorage: [null, null],
+            forgeStorage: [null, null, null],
             charge: charge,
         });
         return true;
@@ -2136,7 +2143,10 @@ class World {
     // 检查是否靠近篝火
     isNearCampfire(pos) {
         for (const cf of this.campfires) {
-            if (cf.position.distanceTo(pos) < 5) return true;
+            const dx = cf.position.x - pos.x;
+            const dz = cf.position.z - pos.z;
+            const dy = cf.position.y - pos.y;
+            if (dx * dx + dy * dy + dz * dz < 25) return true;
         }
         return false;
     }
@@ -2260,15 +2270,16 @@ class World {
         this.ambient.intensity = 0.1 + dayFactor * 0.3;
         this.hemi.intensity = 0.05 + dayFactor * 0.25;
 
-        // 天空颜色
-        const dayColor = new THREE.Color(0x87ceeb);
-        const nightColor = new THREE.Color(0x0a0a20);
-        const sunsetColor = new THREE.Color(0xff7733);
+        // 天空颜色（复用对象避免GC压力）
+        if (!this._dayColor) this._dayColor = new THREE.Color(0x87ceeb);
+        if (!this._nightColor) this._nightColor = new THREE.Color(0x0a0a20);
+        if (!this._sunsetColor) this._sunsetColor = new THREE.Color(0xff7733);
+        if (!this._skyColor) this._skyColor = new THREE.Color();
         let skyColor;
         if (dayFactor > 0.3) {
-            skyColor = dayColor.clone().lerp(nightColor, 1 - dayFactor);
+            skyColor = this._dayColor.clone().lerp(this._nightColor, 1 - dayFactor);
         } else {
-            skyColor = nightColor.clone().lerp(sunsetColor, dayFactor / 0.3);
+            skyColor = this._nightColor.clone().lerp(this._sunsetColor, dayFactor / 0.3);
         }
         this.scene.background = skyColor;
         this.scene.fog.color = skyColor;
@@ -2293,11 +2304,14 @@ class World {
                 }
             }
         }
-        // 篝火火焰动画
+        // 篝火火焰动画（缓存时间，减少Date.now调用）
+        const now = performance.now();
+        const sinVal = Math.sin(now * 0.01);
+        const sinVal2 = Math.sin(now * 0.008);
         for (const cf of this.campfires) {
             if (cf.fire) {
-                cf.fire.scale.y = 0.8 + Math.sin(Date.now() * 0.01) * 0.2;
-                cf.light.intensity = 1.5 + Math.sin(Date.now() * 0.008) * 0.5;
+                cf.fire.scale.y = 0.8 + sinVal * 0.2;
+                cf.light.intensity = 1.5 + sinVal2 * 0.5;
             }
         }
     }
@@ -2371,8 +2385,7 @@ class World {
             } else {
                 this.buildings = [];
                 this.campfires = [];
-                const portalPos = new THREE.Vector3(0, this.getHeight(0, 0), 0);
-                this.placeBuilding('portal', portalPos, 0);
+                // 金维度不创建传送门，只能通过传送石碑或死亡离开
             }
             this.worldType = 'gold';
             this.waterMesh.visible = false;

@@ -1,0 +1,107 @@
+【世界生存 - 局域网服务器一直开着的方法】
+
+项目目录：F:\xy\xyxnyz
+服务器文件：server.js
+端口：8090
+
+========================================
+一、最简单方法（推荐新手）
+========================================
+1. 双击运行：start-server.bat
+2. 黑窗口会显示本机地址和局域网地址
+3. 其他玩家用局域网地址访问，例如： http://192.168.1.100:8090
+4. 重要：不要关闭这个黑窗口！
+5. 服务器崩溃会自动重启（5秒后）
+
+提示：可以把 start-server.bat 右键“发送到”→桌面快捷方式，方便启动。
+
+========================================
+二、开机自动启动（简单）
+========================================
+1. 右键 start-server.bat → 创建快捷方式
+2. 把快捷方式复制到：
+   C:\Users\你的用户名\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+   （或者按 Win+R，输入 shell:startup 回车打开启动文件夹）
+3. 下次开机自动运行。
+
+注意：用户登录后才启动；关机/重启/睡眠后服务器会停。
+
+========================================
+三、推荐：用 pm2 后台常驻（稳定）
+========================================
+前提：已安装 Node.js
+
+1. 管理员身份打开 PowerShell 或 CMD，执行：
+   npm install -g pm2
+
+2. 进入项目目录：
+   cd /d F:\xy\xyxnyz
+
+3. 启动服务器（后台运行）：
+   pm2 start server.js --name world-server
+
+4. 设置开机自启：
+   pm2 save
+   pm2 startup
+   （执行 pm2 startup 后，它会输出一条命令，复制粘贴再执行一次）
+
+5. 常用命令：
+   pm2 list                 查看状态
+   pm2 logs world-server    查看日志
+   pm2 restart world-server 重启
+   pm2 stop world-server    停止
+   pm2 delete world-server  删除
+
+优点：后台运行、无黑窗口、崩溃自动重启、开机自动启动。
+
+========================================
+四、最彻底：注册为 Windows 服务（无窗口）
+========================================
+工具：nssm（Non-Sucking Service Manager）
+
+1. 下载 nssm：https://nssm.cc/download
+   解压，把 nssm.exe 放到 F:\xy\xyxnyz\nssm.exe
+
+2. 以管理员身份 CMD 执行：
+   cd /d F:\xy\xyxnyz
+   nssm install WorldSurvivalServer
+
+3. 在弹出的窗口设置：
+   - Path: C:\Program Files\nodejs\node.exe
+   - Startup directory: F:\xy\xyxnyz
+   - Arguments: server.js
+   - 点击 Install service
+
+4. 启动服务：
+   nssm start WorldSurvivalServer
+
+5. 常用：
+   nssm stop WorldSurvivalServer
+   nssm restart WorldSurvivalServer
+   nssm remove WorldSurvivalServer confirm   （删除服务）
+
+优点：完全后台、无需登录、开机即启动、系统服务级别。
+
+========================================
+五、额外建议
+========================================
+- 防止电脑自动睡眠：
+  设置 → 系统 → 电源和睡眠 → 屏幕和睡眠都改成"从不"
+  或电源选项里"选择电源按钮的功能"里取消"启用快速启动"
+
+- 固定本机IP（路由器里给这台电脑分配静态IP），避免IP变了后别人连不上。
+
+- 防火墙：
+  如果别人连不上，Windows Defender 防火墙里允许 8090 端口入站（TCP）。
+
+- 测试：
+  本机浏览器打开 http://localhost:8090
+  另一台设备打开 http://本机局域网IP:8090
+
+========================================
+快速启动（推荐日常用）
+========================================
+双击 start-server.bat 就行。
+需要后台/开机自启再考虑 pm2 或 nssm。
+
+服务器已监听 0.0.0.0:8090，局域网可直接访问。

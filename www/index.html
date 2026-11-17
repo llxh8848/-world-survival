@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -12,41 +12,302 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon-192.png">
     <title>世界生存 - 3D Survival Game</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20261115a">
 </head>
 <body>
     <!-- 加载界面 -->
     <div id="loadingScreen">
         <div class="loading-content">
-            <h1>� 世界生存</h1>
-            <p>3D Survival Game</p>
+            <h1><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="20" height="10" rx="5"/><path d="M8 12.5v3M6.5 14h3"/><circle cx="15.5" cy="12.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="17.5" cy="15" r="0.9" fill="currentColor" stroke="none"/></svg> 小宇游戏盒</h1>
+            <p>XiaoYu Game Box</p>
             <div class="loading-bar"><div id="loadingFill"></div></div>
             <p id="loadingText">正在加载资源...</p>
         </div>
-        <div class="version-tag">石之维度</div>
     </div>
 
     <!-- 登录界面 -->
     <div id="loginScreen" style="display:none">
         <div class="login-content">
-            <h1>🌍 世界生存</h1>
-            <p class="subtitle">登录你的存档</p>
+            <h1><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="20" height="10" rx="5"/><path d="M8 12.5v3M6.5 14h3"/><circle cx="15.5" cy="12.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="17.5" cy="15" r="0.9" fill="currentColor" stroke="none"/></svg> 小宇游戏盒</h1>
+            <p class="subtitle">登录你的账号</p>
             <div class="login-form">
                 <input type="text" id="usernameInput" placeholder="输入用户名" maxlength="12" autocomplete="off">
                 <input type="password" id="passwordInput" placeholder="输入密码" maxlength="20" autocomplete="off">
                 <button id="loginBtn" class="btn-login">登录 / 注册</button>
             </div>
             <div id="existingUsers" class="existing-users"></div>
-            <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
         </div>
-        <div class="version-tag">石之维度</div>
     </div>
 
-    <!-- 主菜单 -->
+    <!-- 主菜单：小宇游戏盒 -->
     <div id="mainMenuScreen" style="display:none">
+        <button id="btnDevSwitch" class="dev-switch-btn" style="display:none"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H8"/><path d="M8 13l-4 4 4 4"/><path d="M4 17h12"/></svg> 切换账号</button>
+        <div class="gamebox-content">
+            <div class="gamebox-header">
+                <h1><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="20" height="10" rx="5"/><path d="M8 12.5v3M6.5 14h3"/><circle cx="15.5" cy="12.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="17.5" cy="15" r="0.9" fill="currentColor" stroke="none"/></svg> 小宇游戏盒</h1>
+                <p class="subtitle" id="welcomeText">欢迎</p>
+            </div>
+            <div class="gamebox-grid">
+                <div id="btnWorldSurvival" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#4fc3f7" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3.5 9h17M3.5 15h17"/></svg></div>
+                    <div class="game-card-title">世界生存</div>
+                    <div class="game-card-desc">3D沙盒生存冒险</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+                <div id="btnPvz" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em"><circle cx="12" cy="11" r="3.2" fill="#8d6e63"/><g fill="#ffd54f"><ellipse cx="12" cy="5.4" rx="1.5" ry="2.3"/><ellipse cx="12" cy="16.6" rx="1.5" ry="2.3"/><ellipse cx="6.4" cy="11" rx="2.3" ry="1.5"/><ellipse cx="17.6" cy="11" rx="2.3" ry="1.5"/><ellipse cx="8.2" cy="7.2" rx="1.5" ry="2.1" transform="rotate(-45 8.2 7.2)"/><ellipse cx="15.8" cy="14.8" rx="1.5" ry="2.1" transform="rotate(-45 15.8 14.8)"/><ellipse cx="15.8" cy="7.2" rx="1.5" ry="2.1" transform="rotate(45 15.8 7.2)"/><ellipse cx="8.2" cy="14.8" rx="1.5" ry="2.1" transform="rotate(45 8.2 14.8)"/></g><path d="M12 21.5v-3M12 19l-3-1.5" stroke="#66bb6a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></div>
+                    <div class="game-card-title">植物大战僵尸</div>
+                    <div class="game-card-desc">概念版·原版画风草坪塔防</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+                <div id="btnStickPvz" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#37474f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="6" r="2.6"/><path d="M12 9v6M12 11l-4 2.5M12 11l4 2.5M12 15l-3.5 6M12 15l3.5 6"/></svg></div>
+                    <div class="game-card-title">火柴人大战僵尸</div>
+                    <div class="game-card-desc">纸片火柴人塔防·独立关卡</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+                <div id="btnBallBattle" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em"><circle cx="12" cy="12" r="9" fill="#eceff1" stroke="#37474f" stroke-width="1.5"/><polygon points="12,8.5 14.8,10.5 13.7,13.7 10.3,13.7 9.2,10.5" fill="#37474f"/><path d="M12 3.5v5M19.5 9.5l-4.7 1M18.5 17.5l-4.3-3.2M5.5 17.5l4.3-3.2M4.5 9.5l4.7 1" stroke="#37474f" stroke-width="1.1" fill="none"/></svg></div>
+                    <div class="game-card-title">小球对战</div>
+                    <div class="game-card-desc">斗蛐蛐自动对战·赛季s0.1</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+                <div id="btnFarm" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#8d6e63" stroke-width="1.6" stroke-linecap="round"><path d="M12 21V9"/><path d="M12 9C12 5 9 3 5.5 3 5.5 7 8 9 12 9z" fill="#a5d6a7"/><path d="M12 9c0-4 3-6 6.5-6C18.5 7 16 9 12 9z" fill="#a5d6a7"/><path d="M12 13c0-3-2.5-4.5-5.5-4.5C6.5 12 9 13.5 12 13z" fill="#66bb6a"/><path d="M12 13c0-3 2.5-4.5 5.5-4.5C17.5 12 15 13.5 12 13z" fill="#66bb6a"/></svg></div>
+                    <div class="game-card-title">衬彩稻田</div>
+                    <div class="game-card-desc">8×8 种田经营</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+                <div id="btnVideo" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#9575cd" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3z"/><path d="M7 10.8l2 1.9M9 10.8l-2 1.9" stroke-width="1.3"/></svg></div>
+                    <div class="game-card-title">玩玩视频</div>
+                    <div class="game-card-desc">画画的视频软件·逐帧动画</div>
+                    <div class="game-card-play">▶ 开始创作</div>
+                </div>
+                <div id="btnLevelCiv" class="game-card">
+                    <div class="game-card-icon">
+                        <svg viewBox="0 0 32 32" width="1.2em" height="1.2em">
+                            <polygon points="16,2 30,10 16,18 2,10" fill="#5b8731" stroke="#38541c" stroke-width="1.2"/>
+                            <polygon points="2,10 16,18 16,30 2,22" fill="#866043" stroke="#523927" stroke-width="1.2"/>
+                            <polygon points="16,18 30,10 30,22 16,30" fill="#6d4c35" stroke="#422c1e" stroke-width="1.2"/>
+                            <polygon points="2,10 16,18 16,21 2,13" fill="#4d7328"/>
+                            <polygon points="16,18 30,10 30,13 16,21" fill="#436423"/>
+                        </svg>
+                    </div>
+                    <div class="game-card-title">我的世界</div>
+                    <div class="game-card-desc">3D方块沙盒 · 自由建造与破坏</div>
+                    <div class="game-card-play">▶ 进入世界</div>
+                </div>
+                <div id="btnLinjing" class="game-card">
+                    <div class="game-card-icon"><svg viewBox="0 0 24 24" width="1em" height="1em"><path d="M2 20L9 7l4 7 3-4 6 10z" fill="#607d8b" stroke="#37474f" stroke-width="1.2"/><circle cx="17" cy="6" r="2.4" fill="#ffd54f"/></svg></div>
+                    <div class="game-card-title">林静球山</div>
+                    <div class="game-card-desc">剧情漫画 · 回合制闯关</div>
+                    <div class="game-card-play">▶ 开始游戏</div>
+                </div>
+            </div>
+            <div class="gamebox-footer">
+                <button id="btnBackToLogin" class="gamebox-footer-btn">← 返回登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开发者模式：无视登录的测试切换账号界面 -->
+    <div id="devSwitchScreen" style="display:none">
+        <div class="login-content">
+            <h1><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H8"/><path d="M8 13l-4 4 4 4"/><path d="M4 17h12"/></svg> 开发者模式</h1>
+            <p class="subtitle">切换账号 · 测试界面（无需密码，直接进入）</p>
+            <div class="login-form">
+                <input type="text" id="devNameInput" placeholder="输入任意账号名直接进" maxlength="12" autocomplete="off">
+                <button id="btnDevEnter" class="btn-login">进入账号</button>
+            </div>
+            <div id="devUserList" class="existing-users"></div>
+            <button id="btnDevSwitchBack" class="gamebox-footer-btn" style="margin-top:18px">← 返回主菜单</button>
+        </div>
+    </div>
+
+    <!-- 玩玩视频：画画+逐帧动画；顶部工具栏选图形，底部帧列表连播成视频 -->
+    <div id="videoScreen" style="display:none">
+        <div class="vd-box">
+            <div class="vd-head">
+                <button id="btnBackFromVideo" class="firewar-back" style="position:static">← 返回</button>
+                <div class="vd-avatar">🎬</div>
+                <div class="vd-id">
+                    <div class="vd-title">玩玩视频</div>
+                    <div class="vd-status">画一帧帧，连成你的小动画</div>
+                </div>
+                <span id="vdUser" class="vd-user"></span>
+                <button id="btnVdSave" class="vd-btn" title="保存到本账号">💾 保存</button>
+                <button id="btnVdExport" class="vd-btn" title="导出webm视频">⬇ 导出视频</button>
+            </div>
+            <div class="vd-toolbar" id="vdToolbar">
+                <button data-tool="pen" class="vd-tool on" title="自由画笔">✏️ 画笔</button>
+                <button data-tool="line" class="vd-tool" title="直线">╱ 直线</button>
+                <button data-tool="rect" class="vd-tool" title="矩形">▭ 矩形</button>
+                <button data-tool="ellipse" class="vd-tool" title="圆/椭圆">◯ 圆</button>
+                <button data-tool="tri" class="vd-tool" title="三角形">△ 三角</button>
+                <button data-tool="text" class="vd-tool" title="打字：点一下画布开始输入">𝐓 打字</button>
+                <button data-tool="eraser" class="vd-tool" title="橡皮擦">🧽 橡皮</button>
+                <button id="btnVdOnion" class="vd-tool" title="洋葱皮：编辑时显示上一帧30%透明的残影（播放时不显示）">🧅 Pf</button>
+                <span class="vd-sep"></span>
+                <span class="vd-palette" id="vdPalette">
+                    <button data-c="#222222" class="vd-c on" style="background:#222222" title="黑"></button>
+                    <button data-c="#e53935" class="vd-c" style="background:#e53935" title="红"></button>
+                    <button data-c="#fb8c00" class="vd-c" style="background:#fb8c00" title="橙"></button>
+                    <button data-c="#fdd835" class="vd-c" style="background:#fdd835" title="黄"></button>
+                    <button data-c="#43a047" class="vd-c" style="background:#43a047" title="绿"></button>
+                    <button data-c="#1e88e5" class="vd-c" style="background:#1e88e5" title="蓝"></button>
+                    <button data-c="#8e24aa" class="vd-c" style="background:#8e24aa" title="紫"></button>
+                    <input type="color" id="vdColor" value="#222222" title="自选颜色">
+                </span>
+                <span class="vd-sep"></span>
+                <label class="vd-size">粗细 <input type="range" id="vdSize" min="1" max="40" value="4"><span id="vdSizeVal">4</span></label>
+                <span class="vd-sep"></span>
+                <button id="btnVdUndo" class="vd-tool" title="撤销一步">↶ 撤销</button>
+                <button id="btnVdClear" class="vd-tool" title="清空当前帧">🗑 清空</button>
+            </div>
+            <div class="vd-stage"><div class="vd-wrap"><canvas id="vdCanvas" width="960" height="540"></canvas></div></div>
+            <div class="vd-frames">
+                <div id="vdThumbs" class="vd-thumbs"></div>
+                <div class="vd-fbtns">
+                    <button id="btnVdAddFrame" class="vd-tool" title="在当前帧后加空白帧">＋帧</button>
+                    <button id="btnVdDupFrame" class="vd-tool" title="复制当前帧">⧉复制</button>
+                    <button id="btnVdDelFrame" class="vd-tool" title="删除当前帧">✕删帧</button>
+                </div>
+                <span id="vdFrameInfo" class="vd-finfo"></span>
+                <div class="vd-play">
+                    <select id="vdFps" class="vd-fps" title="播放速度">
+                        <option value="3">3帧/秒</option>
+                        <option value="6" selected>6帧/秒</option>
+                        <option value="10">10帧/秒</option>
+                        <option value="15">15帧/秒</option>
+                    </select>
+                    <button id="btnVdPlay" class="vd-playbtn">▶ 播放</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 植物大战僵尸·概念版：白天草坪塔防 -->
+    <div id="pvzScreen" style="display:none">
+        <canvas id="pvzCanvas"></canvas>
+        <div class="firewar-title"><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em"><circle cx="12" cy="11" r="3.2" fill="#8d6e63"/><g fill="#ffd54f"><ellipse cx="12" cy="5.4" rx="1.5" ry="2.3"/><ellipse cx="12" cy="16.6" rx="1.5" ry="2.3"/><ellipse cx="6.4" cy="11" rx="2.3" ry="1.5"/><ellipse cx="17.6" cy="11" rx="2.3" ry="1.5"/></g><path d="M12 21.5v-3" stroke="#66bb6a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg> 植物大战僵尸</div>
+        <button id="btnBackFromPvz" class="firewar-back">← 返回游戏盒</button>
+    </div>
+
+    <!-- 小球对战：斗蛐蛐自动对战 -->
+    <div id="ballBattleScreen" style="display:none">
+        <canvas id="ballBattleCanvas"></canvas>
+        <div class="firewar-title"><svg viewBox="0 0 24 24" width="1em" height="1em" style="vertical-align:-0.12em"><circle cx="12" cy="12" r="9" fill="#eceff1" stroke="#37474f" stroke-width="1.5"/><polygon points="12,8.5 14.8,10.5 13.7,13.7 10.3,13.7 9.2,10.5" fill="#37474f"/><path d="M12 3.5v5M19.5 9.5l-4.7 1M18.5 17.5l-4.3-3.2M5.5 17.5l4.3-3.2M4.5 9.5l4.7 1" stroke="#37474f" stroke-width="1.1" fill="none"/></svg> 小球对战</div>
+        <button id="btnBackFromBallBattle" class="firewar-back">← 返回游戏盒</button>
+        <!-- 选球面板 -->
+        <div id="ballSelectPanel" class="bb-panel">
+            <h2>选择出战球（基础赛季 · 至少2个，同种可选3个）</h2>
+            <div class="bb-cards" id="bbPage1">
+                <div class="bb-card" data-type="plain">
+                    <div class="bb-ball" style="background:#9e9e9e;box-shadow:0 0 20px #e0e0e0"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6.5"/><path d="M8.6 9.6a4.6 4.6 0 0 1 4.2-4.2"/></svg></div>
+                    <div class="bb-name">白板</div>
+                    <div class="bb-stats">1000血 · 50伤 · 1倍速<br>平平无奇的基准球</div>
+                </div>
+                <div class="bb-card" data-type="speed">
+                    <div class="bb-ball" style="background:#4fc3f7;box-shadow:0 0 20px #80d8ff"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2.5 8 12.5h4.3L9.8 21.5 18.5 10h-4.6z"/><path d="M2.2 8.5h3.4M1.8 12h3.4M2.2 15.5h3.4"/></svg></div>
+                    <div class="bb-name">速度</div>
+                    <div class="bb-stats">1000血 · 50伤 · 2倍速<br>快就一个字</div>
+                </div>
+                <div class="bb-card" data-type="hpball">
+                    <div class="bb-ball" style="background:#66bb6a;box-shadow:0 0 20px #a5d6a7"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.6-9.4-9.1A5.4 5.4 0 0 1 12 6.6a5.4 5.4 0 0 1 9.4 5.3C19 16.4 12 21 12 21z"/></svg></div>
+                    <div class="bb-name">血量</div>
+                    <div class="bb-stats">1300血 · 50伤 · 1倍速<br>就是血厚</div>
+                </div>
+                <div class="bb-card" data-type="dmg">
+                    <div class="bb-ball" style="background:#ff5722;box-shadow:0 0 20px #ffab91"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 7.2L12 20.5l2.2-13.3z"/><path d="M7.5 7h9"/><path d="M12 2.5v4"/></svg></div>
+                    <div class="bb-name">伤害</div>
+                    <div class="bb-stats">1000血 · 80伤 · 1倍速<br>打得就是疼</div>
+                </div>
+                <div class="bb-card" data-type="invincible">
+                    <div class="bb-ball" style="background:#ffb300;box-shadow:0 0 20px #ffe082"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 9.5-7 10-3.5-.5-7-5-7-10V6l7-4z"/><path d="M9 12l2 2 4-4"/></svg></div>
+                    <div class="bb-name">无敌</div>
+                    <div class="bb-stats">1000血 · 50伤 · 1倍速<br>我从地狱归来,我而最强球!</div>
+                </div>
+                <div class="bb-card" data-type="blackspeed">
+                    <div class="bb-ball" style="background:#212121;box-shadow:0 0 20px #7c4dff"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2.5 8 12.5h4.3L9.8 21.5 18.5 10h-4.6z"/><path d="M2.2 8.5h3.4M1.8 12h3.4M2.2 15.5h3.4"/></svg></div>
+                    <div class="bb-name">黑速度</div>
+                    <div class="bb-stats">1000血 · 50伤 · 1.2倍速<br>速度晒黑了,不好!他不是垃圾速度,快跑开</div>
+                </div>
+                <div class="bb-card" data-type="white">
+                    <div class="bb-ball" style="background:#ffffff;box-shadow:0 0 20px #ffffff"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(55,65,81,0.9)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></div>
+                    <div class="bb-name">白色白板</div>
+                    <div class="bb-stats">1000血 · 50伤 · 1倍速<br>每秒扔小球20伤</div>
+                </div>
+                <div class="bb-card" data-type="blackwb">
+                    <div class="bb-ball" style="background:#212121;box-shadow:0 0 20px #616161"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></div>
+                    <div class="bb-name">黑色白板</div>
+                    <div class="bb-stats">1000血 · 50伤 · 1倍速<br>碰墙1s内减伤50%</div>
+                </div>
+            </div>
+            <div class="bb-picks"><span id="bbPicks">已选: 无</span></div>
+            <div id="bbTeamState" style="display:none"></div>
+            <div id="bbTeamCfg" style="display:none">
+                <button class="bb-team-num" data-n="2">2</button>
+                <button class="bb-team-num" data-n="3">3</button>
+                <button class="bb-team-num" data-n="4">4</button>
+                <button id="btnTeamCancel" class="bb-btn bb-btn2">取消</button>
+            </div>
+            <div class="bb-btns">
+                <button id="btnPaddleMode" class="bb-btn bb-btn2" style="margin-right:auto;border-color:rgba(179,157,219,0.6);color:#d1c4e9">打板模式</button>
+                <button id="btnStartBattle" class="bb-btn" disabled>开始对战</button>
+                <button id="btnDaily" class="bb-btn bb-btn2" style="border-color:rgba(255,213,79,0.6);color:#ffd54f">每日挑战</button>
+                <button id="btnSkinShop" class="bb-btn bb-btn2" style="border-color:rgba(128,222,234,0.6);color:#80deea">皮肤商店</button>
+                <button id="btnArena" class="bb-btn bb-btn2" style="border-color:rgba(255,138,101,0.6);color:#ff8a65">擂台赛</button>
+                <button id="btnTeamMode" class="bb-btn bb-btn2">队伍模式</button>
+                <button id="btnTeamConfirm" class="bb-btn" style="display:none" disabled>确定</button>
+            </div>
+        </div>
+        <!-- 擂台赛赛前展示 -->
+        <div id="ballArenaIntro" class="bb-panel bb-arena-intro" style="display:none">
+            <h2 id="bbArenaTitle">谁能战胜擂主?</h2>
+            <div id="bbArenaIntroList" class="bb-arena-intro-list"></div>
+            <div class="bb-btns">
+                <button id="btnArenaFight" class="bb-btn">正式开始</button>
+                <button id="btnArenaBack" class="bb-btn bb-btn2">重新选择</button>
+            </div>
+        </div>
+        <!-- 结算面板 -->
+        <div id="ballResultPanel" class="bb-panel" style="display:none">
+            <h2 id="bbResultText">获胜!</h2>
+            <div id="bbDailyBoard" style="display:none;font-size:13px;color:#cfd8dc;margin-bottom:10px;line-height:1.7"></div>
+            <div class="bb-btns">
+                <button id="btnBattleAgain" class="bb-btn">再来一局</button>
+                <button id="btnReselect" class="bb-btn bb-btn2">重新选球</button>
+            </div>
+        </div>
+        <!-- 皮肤商店 -->
+        <div id="ballSkinPanel" class="bb-panel" style="display:none">
+            <h2>皮肤商店 <span id="bbCoinNow" style="font-size:13px;color:#ffd54f"></span></h2>
+            <div id="bbSkinItems" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <div class="bb-btns"><button id="btnCloseSkin" class="bb-btn bb-btn2">关闭</button></div>
+        </div>
+        <!-- 强度排行 -->
+        <button id="btnBallRank" class="bb-rank-btn">🏆 强度排行</button>
+        <div id="ballRankPanel" class="bb-panel" style="display:none">
+            <h2>🏆 强度排行</h2>
+            <div id="bbRankSub" class="bb-rank-sub">两两循环模拟对战 · 按总胜率排名</div>
+            <div id="bbRankProgress" class="bb-rank-progress" style="display:none">
+                <div class="bb-rank-progress-bar"><i id="bbRankProgressFill"></i></div>
+                <div id="bbRankProgressText" class="bb-rank-progress-text">模拟计算中…</div>
+            </div>
+            <div id="bbRankList" class="bb-rank-list"></div>
+            <div class="bb-btns">
+                <button id="btnRankSpeed" class="bb-btn bb-btn2">速度×1</button>
+                <button id="btnClearStats" class="bb-btn bb-btn2">消除记录</button>
+                <button id="btnCloseRank" class="bb-btn bb-btn2">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 世界生存子菜单 -->
+    <div id="worldSurvivalScreen" style="display:none">
         <div class="main-menu-content">
             <h1>🌍 世界生存</h1>
-            <p class="subtitle" id="welcomeText">欢迎</p>
             <div class="menu-buttons">
                 <button id="btnPrivateGame" class="menu-btn menu-private">
                     <span class="menu-icon">💾</span>
@@ -58,11 +319,361 @@
                     <span class="menu-label">多人游戏</span>
                     <span class="menu-desc">联机对战，与其他玩家一起</span>
                 </button>
+                <button id="btnRemake" class="menu-btn">
+                    <span class="menu-icon">🔄</span>
+                    <span class="menu-label">重置版界面</span>
+                    <span class="menu-desc">全新重制版本</span>
+                </button>
             </div>
-            <button id="btnBackToLogin" class="btn-back">← 返回登录</button>
+            <button id="btnSettings" class="menu-btn menu-settings">
+                <span class="menu-icon">⚙️</span>
+                <span class="menu-label">设置</span>
+                <span class="menu-desc">渲染优化、怀旧材质等选项</span>
+            </button>
+            <button id="btnBackToGameBox" class="btn-back">← 返回小宇游戏盒</button>
             <a href="versions.html" class="btn-version-intro">📋 版本介绍</a>
         </div>
-        <div class="version-tag">石之维度</div>
+        <div class="version-tag">金光闪闪</div>
+    </div>
+
+    <!-- 世界生存重置版：存档菜单（绿底） -->
+    <div id="remakeScreen" style="display:none">
+        <div class="rmk-menu">
+            <h1>🔄 世界生存 重置版</h1>
+            <div id="rmkSaveList" class="rmk-save-list"></div>
+            <div class="rmk-btns">
+                <button id="btnRmkCreate" class="menu-btn">
+                    <span class="menu-icon">📁</span>
+                    <span class="menu-label">创建存档</span>
+                </button>
+                <button id="btnRmkJoin" class="menu-btn" disabled>
+                    <span class="menu-icon">▶️</span>
+                    <span class="menu-label">加入世界</span>
+                </button>
+                <button id="btnRmkDelete" class="menu-btn" disabled>
+                    <span class="menu-icon">🗑️</span>
+                    <span class="menu-label">删除存档</span>
+                </button>
+                <button id="btnRmkRooms" class="menu-btn">
+                    <span class="menu-icon">🌐</span>
+                    <span class="menu-label">房间界面</span>
+                </button>
+            </div>
+            <div id="rmkCreateRow" class="rmk-create-row" style="display:none">
+                <input id="rmkSaveName" maxlength="12" placeholder="存档名称" />
+                <button id="btnRmkCreateOk" class="menu-btn">创建存档</button>
+            </div>
+            <button id="btnRmkBack" class="btn-back">← 返回</button>
+        </div>
+    </div>
+
+    <!-- 世界生存重置版：联机大厅 -->
+    <div id="rmkLobbyScreen" style="display:none">
+        <div class="rmk-menu rmk-lobby">
+            <h1>🌐 房间界面</h1>
+            <div class="rmk-lobby-top">
+                <input id="rmkNetName" maxlength="12" placeholder="昵称" />
+                <span id="rmkRoomStatus" class="rmk-room-status">未连接</span>
+            </div>
+            <div class="rmk-lobby-cols">
+                <div class="rmk-lobby-col">
+                    <div class="rmk-lobby-title">当前房间</div>
+                    <div id="rmkRoomList" class="rmk-save-list rmk-room-list"></div>
+                    <div class="rmk-btns">
+                        <button id="btnRoomJoin" class="menu-btn" disabled>
+                            <span class="menu-icon">▶️</span>
+                            <span class="menu-label">加入房间</span>
+                        </button>
+                        <button id="btnRoomCreate" class="menu-btn">
+                            <span class="menu-icon">📁</span>
+                            <span class="menu-label">创建房间</span>
+                        </button>
+                    </div>
+                    <div id="rmkRoomCreateRow" class="rmk-create-row" style="display:none">
+                        <input id="rmkRoomName" maxlength="12" placeholder="房间名称" />
+                        <button id="btnRoomCreateOk" class="menu-btn">创建</button>
+                    </div>
+                </div>
+                <div class="rmk-lobby-col">
+                    <div class="rmk-lobby-title">我的房间</div>
+                    <div id="rmkMyRoomList" class="rmk-save-list rmk-room-list"></div>
+                    <div class="rmk-btns">
+                        <button id="btnRoomOpen" class="menu-btn" disabled>
+                            <span class="menu-icon">🚪</span>
+                            <span class="menu-label">开启房间</span>
+                        </button>
+                        <button id="btnRoomDel" class="menu-btn" disabled>
+                            <span class="menu-icon">🗑️</span>
+                            <span class="menu-label">删除</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="rmkRoomMsg" class="rmk-craft-msg"></div>
+            <button id="btnRoomBack" class="btn-back">← 返回</button>
+        </div>
+    </div>
+
+    <!-- 世界生存重置版：游戏画面 -->
+    <div id="remakeGameScreen" style="display:none">
+        <div id="rmkViewport"></div>
+        <div class="rmk-crosshair"></div>
+        <div id="rmkChopWrap"><div id="rmkChopFill"></div></div>
+        <div id="rmkTime">☀ 06:00</div>
+        <div id="rmkHurt"></div>
+        <div class="rmk-hud">
+            <div class="rmk-hp"><div id="rmkHpFill"></div><span id="rmkHpText">100</span></div>
+            <div id="rmkHotbar" class="rmk-hotbar"></div>
+        </div>
+        <div id="rmkHint" class="rmk-hint">点击画面锁定鼠标 · WASD移动 · 空格跳跃 · E背包 · Esc暂停</div>
+        <button id="btnRoomClose" class="rmk-room-close" style="display:none">关闭房间</button>
+        <div id="rmkNetTag" class="rmk-net-tag" style="display:none"></div>
+        <div id="rmkBag" class="rmk-bag" style="display:none">
+            <h2>背包</h2>
+            <div class="rmk-bag-main">
+                <div id="rmkBagGrid" class="rmk-bag-grid"></div>
+                <div class="rmk-craft">
+                    <h3>合成</h3>
+                    <div class="rmk-craft-item">
+                        <div class="rmk-slot"><div class="rmk-item-wall"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="6" height="14" rx="1" fill="#a06a35" stroke="#5d3a1a" stroke-width="1"/><rect x="9.5" y="5" width="6" height="14" rx="1" fill="#8b5a2b" stroke="#5d3a1a" stroke-width="1"/><rect x="16.5" y="5" width="5" height="14" rx="1" fill="#a06a35" stroke="#5d3a1a" stroke-width="1"/></svg></div></div>
+                        <div class="rmk-craft-info">
+                            <b>木墙</b>
+                            <span>木材+20% 柳条+15%，≥3木材</span>
+                        </div>
+                        <button id="btnCraftWall" class="menu-btn">开始</button>
+                    </div>
+                    <div class="rmk-craft-item">
+                        <div class="rmk-slot"><div class="rmk-item-table"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="5" rx="1" fill="#a06a35" stroke="#5d3a1a" stroke-width="1"/><rect x="5" y="10" width="3" height="10" fill="#8b5a2b" stroke="#5d3a1a" stroke-width=".8"/><rect x="16" y="10" width="3" height="10" fill="#8b5a2b" stroke="#5d3a1a" stroke-width=".8"/></svg></div></div>
+                        <div class="rmk-craft-info">
+                            <b>合成桌</b>
+                            <span>木材+5% 柳条+6% 木墙+15%，≥1木材+1木墙</span>
+                        </div>
+                        <button id="btnCraftTable" class="menu-btn">开始</button>
+                    </div>
+                </div>
+            </div>
+            <div class="rmk-invbar"><span>物品栏</span><div id="rmkInvBar" class="rmk-hotbar"></div></div>
+            <div class="rmk-bag-tip">点选物品再点目标格交换位置，或直接拖拽 · 同类物品自动合并</div>
+            <button id="btnRmkBagClose" class="menu-btn">关闭 (E)</button>
+        </div>
+        <div id="rmkCraft" class="rmk-craft-panel" style="display:none">
+            <h2 id="rmkCraftTitle">合成木斧头</h2>
+            <div id="rmkCraftList" class="rmk-craft-list" style="display:none"></div>
+            <div class="rmk-craft-mid">
+                <div id="rmkCraftSlots" class="rmk-craft-slots"></div>
+                <div class="rmk-craft-side">
+                    <div id="rmkCraftChance">成功率 0%</div>
+                    <button id="btnCraftDo" class="menu-btn">合成</button>
+                </div>
+            </div>
+            <div class="rmk-craft-sub">点击下方已有物品放入上方格子（仅可加成功率材料，每格1个）</div>
+            <div id="rmkCraftInv" class="rmk-craft-inv"></div>
+            <div id="rmkCraftMsg" class="rmk-craft-msg"></div>
+            <button id="btnCraftBack" class="menu-btn">返回</button>
+        </div>
+        <div id="rmkPause" class="rmk-pause" style="display:none">
+            <h2>已暂停</h2>
+            <button id="btnRmkResume" class="menu-btn">继续游戏</button>
+            <button id="btnRmkExit" class="menu-btn">保存并返回</button>
+        </div>
+    </div>
+
+    <!-- 衬彩稻田：8×8种田 -->
+    <div id="farmScreen" style="display:none">
+        <div class="farm-top">
+            <button id="btnFarmBack" class="firewar-back"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>返回游戏盒</button>
+            <div class="farm-title"><svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-4px;margin-right:6px"><path d="M12 22V10" stroke="#8d6e63" stroke-width="1.6" stroke-linecap="round"/><g fill="#fbc02d" stroke="#f57f17" stroke-width=".8"><path d="M12 10c-2-1-3-3.5-3-6 2.2.5 3.5 2.7 3 6z"/><path d="M12 10c2-1 3-3.5 3-6-2.2.5-3.5 2.7-3 6z"/><path d="M12 15c-2-1-3-3.5-3-6 2.2.5 3.5 2.7 3 6z"/><path d="M12 15c2-1 3-3.5 3-6-2.2.5-3.5 2.7-3 6z"/><path d="M12 20c-2-1-3-3.5-3-6 2.2.5 3.5 2.7 3 6z"/><path d="M12 20c2-1 3-3.5 3-6-2.2.5-3.5 2.7-3 6z"/></g></svg>衬彩稻田</div>
+            <div class="farm-tools">
+                <button id="btnFarmSell" class="farm-shop-btn"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:4px"><circle cx="12" cy="12" r="8.5" fill="#ffd54f" stroke="#f9a825" stroke-width="2"/><path d="M8.5 8.5l3.5 4 3.5-4M12 12.5V17M9.5 14.5h5" stroke="#8d6e63" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>出售</button>
+                <button id="btnFarmShop" class="farm-shop-btn"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:4px"><path d="M4 9l1.2-4.5h13.6L20 9" fill="#ef5350" stroke="#b71c1c"/><path d="M4 9c0 1.4 1.2 2.5 2.7 2.5S9.3 10.4 9.3 9c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.2 2.5 2.7 2.5S20 10.4 20 9" fill="#ef9a9a" stroke="#b71c1c"/><rect x="5.5" y="11" width="13" height="9" rx="1.5" fill="#d7ccc8" stroke="#8d6e63"/><rect x="10" y="14" width="4" height="6" rx=".6" fill="#795548"/></svg>商店</button>
+                <button id="btnFarmChat" class="farm-shop-btn"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:4px"><path d="M4 5h16v11H10l-4.5 4V16H4z" fill="#90caf9" stroke="#5c6bc0" stroke-width="1.2"/><circle cx="9" cy="10.5" r="1" fill="#3949ab"/><circle cx="13" cy="10.5" r="1" fill="#3949ab"/><circle cx="17" cy="10.5" r="1" fill="#3949ab"/></svg>聊天室</button>
+            </div>
+            <div class="farm-stats"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><circle cx="12" cy="12" r="8.5" fill="#ffd54f" stroke="#f9a825" stroke-width="2"/><path d="M8.5 8.5l3.5 4 3.5-4M12 12.5V17M9.5 14.5h5" stroke="#8d6e63" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg><span id="farmGold">50</span></div>
+        </div>
+        <div class="farm-body">
+            <div class="farm-panel farm-log-panel">
+                <div class="farm-panel-title"><svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px;margin-right:5px"><rect x="5" y="4" width="14" height="16" rx="2.5" fill="#fff8e1" stroke="#a1887f"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" stroke="#a1887f" stroke-width="1.4" stroke-linecap="round"/></svg>游戏日志</div>
+                <div id="farmLog" class="farm-log"></div>
+            </div>
+            <div class="farm-grid-wrap">
+                <div id="farmGrid" class="farm-grid"></div>
+            </div>
+        </div>
+        <div class="farm-hotbar-wrap">
+            <div id="farmHotbar" class="farm-hotbar"></div>
+        </div>
+        <div id="farmShop" class="farm-shop" style="display:none">
+            <div class="farm-shop-panel">
+                <h2><svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px;margin-right:6px"><path d="M4 9l1.2-4.5h13.6L20 9" fill="#ef5350" stroke="#b71c1c"/><path d="M4 9c0 1.4 1.2 2.5 2.7 2.5S9.3 10.4 9.3 9c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.2 2.5 2.7 2.5S20 10.4 20 9" fill="#ef9a9a" stroke="#b71c1c"/><rect x="5.5" y="11" width="13" height="9" rx="1.5" fill="#d7ccc8" stroke="#8d6e63"/><rect x="10" y="14" width="4" height="6" rx=".6" fill="#795548"/></svg>商店</h2>
+                <div class="farm-shop-gold"><svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:3px"><circle cx="12" cy="12" r="8.5" fill="#ffd54f" stroke="#f9a825" stroke-width="2"/><path d="M8.5 8.5l3.5 4 3.5-4M12 12.5V17M9.5 14.5h5" stroke="#8d6e63" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg><span id="farmShopGold">0</span></div>
+                <div class="farm-shop-item">
+                    <span><svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:-4px;margin-right:4px"><ellipse cx="9" cy="13" rx="4" ry="6" fill="#d7a86e" stroke="#8d6e63" transform="rotate(-18 9 13)"/><ellipse cx="16" cy="12" rx="3.4" ry="5.2" fill="#e8c48d" stroke="#8d6e63" transform="rotate(15 16 12)"/><path d="M9 9.5v7M16 8.8v6.5" stroke="#a1887f"/></svg>稻种 ×1</span><span class="farm-shop-price">5<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-left:2px"><circle cx="12" cy="12" r="8.5" fill="#ffd54f" stroke="#f9a825" stroke-width="2"/></svg></span>
+                    <button id="btnShopBuy1" class="menu-btn">购买</button>
+                </div>
+                <div class="farm-shop-item">
+                    <span><svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:-4px;margin-right:4px"><ellipse cx="9" cy="13" rx="4" ry="6" fill="#d7a86e" stroke="#8d6e63" transform="rotate(-18 9 13)"/><ellipse cx="16" cy="12" rx="3.4" ry="5.2" fill="#e8c48d" stroke="#8d6e63" transform="rotate(15 16 12)"/><path d="M9 9.5v7M16 8.8v6.5" stroke="#a1887f"/></svg>稻种 ×10</span><span class="farm-shop-price">45<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-left:2px"><circle cx="12" cy="12" r="8.5" fill="#ffd54f" stroke="#f9a825" stroke-width="2"/></svg></span>
+                    <button id="btnShopBuy10" class="menu-btn">购买</button>
+                </div>
+                <button id="btnShopClose" class="menu-btn" style="width:100%">关闭</button>
+            </div>
+        </div>
+        <!-- 聊天室弹窗 -->
+        <div id="farmChat" class="farm-chat" style="display:none">
+            <div class="farm-chat-head">
+                <span><svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px;margin-right:5px"><path d="M4 5h16v11H10l-4.5 4V16H4z" fill="#90caf9" stroke="#5c6bc0" stroke-width="1.2"/></svg>聊天室</span>
+                <button id="btnFarmChatClose" class="farm-chat-x">×</button>
+            </div>
+            <div id="farmChatMsgs" class="farm-chat-msgs"></div>
+            <div class="farm-chat-bar">
+                <input id="farmChatCmd" class="farm-chat-cmd" style="display:none" placeholder="#赐予 玩家 物品 数量" maxlength="40" autocomplete="off">
+                <input id="farmChatInput" placeholder="说点什么..." maxlength="60" autocomplete="off">
+                <button id="btnFarmChatSend" class="farm-chat-send">说话</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <!-- 我的世界：3D方块沙盒 -->
+    <div id="levelcivScreen" style="display:none">
+        <canvas id="lcCanvas"></canvas>
+        <!-- 准心 -->
+        <div id="mcCrosshair" class="mc-crosshair">+</div>
+        <!-- 手持提示 -->
+        <div id="mcItemToast" class="mc-item-toast">🌿 草方块</div>
+
+        <!-- 顶部HUD -->
+        <div class="mc-hud-top">
+            <button id="btnLcBack" class="mc-btn">← 退出世界</button>
+            <div class="mc-info-pills">
+                <span id="mcModeTag" class="mc-pill">⚔️ 生存模式</span>
+                <span id="mcPosTag" class="mc-pill">XYZ: 0, 10, 0</span>
+                <span id="mcTimeTag" class="mc-pill">☀️ 白天</span>
+            </div>
+            <div class="mc-top-actions">
+                <button id="btnMcOpenInv" class="mc-btn mc-btn-sm">🎒 背包/合成[E]</button>
+                <button id="btnMcOnline" class="mc-btn mc-btn-sm mc-btn-gold">🌐 完整网页版MC</button>
+            </div>
+        </div>
+
+        <div id="lcToast"></div>
+
+        <!-- 经典MC背包与合成系统弹窗 -->
+        <div id="mcInventoryModal" class="mc-modal" style="display:none">
+            <div class="mc-inv-box">
+                <div class="mc-inv-header">
+                    <span>🎒 物品背包与合成台 (Inventory & Crafting)</span>
+                    <div class="mc-inv-header-actions">
+                        <button id="btnMcSortInv" class="mc-btn mc-btn-sm">🧹 整理背包</button>
+                        <button id="btnMcCloseInv" class="mc-x">✕</button>
+                    </div>
+                </div>
+                <div class="mc-inv-hint">左键 拿起/放下 · 右键 拆一半 · Shift+左键 快速移动 · Q 或点击空白处 丢弃</div>
+                <div class="mc-inv-body">
+                    <!-- 左侧：背包存储 (27格主包 + 9格快捷栏) -->
+                    <div class="mc-inv-left">
+                        <div class="mc-inv-sec-title">📦 储物背包 (27 格)</div>
+                        <div id="mcMainInvGrid" class="mc-inv-grid">
+                            <!-- 27 slots generated by JS -->
+                        </div>
+                        <div class="mc-inv-sec-title" style="margin-top:12px;">⚡ 底部快捷栏 (9 格 - 对应按键 1~9)</div>
+                        <div id="mcHotbarInvGrid" class="mc-inv-hotbar-grid">
+                            <!-- 9 slots synced with hotbar -->
+                        </div>
+                    </div>
+                    <!-- 右侧：工作台合成配方 -->
+                    <div class="mc-inv-right">
+                        <div id="mcCraftTitle" class="mc-inv-sec-title">🔨 合成（2x2）</div>
+                        <div id="mcCraftList" class="mc-craft-list">
+                            <!-- 配方列表由 JS 动态生成并绑定点击一键合成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 死亡界面遮罩 -->
+        <div id="mcDeathOverlay" class="mc-death-overlay" style="display:none">
+            <div class="mc-death-box">
+                <h1 class="mc-death-title">你死了！</h1>
+                <p class="mc-death-desc">你的生命值已归零</p>
+                <button id="btnMcRespawn" class="mc-btn mc-btn-gold mc-btn-respawn">🔄 重生并在出生点复活</button>
+                <button id="btnMcDeathQuit" class="mc-btn">退出世界</button>
+            </div>
+        </div>
+
+        <!-- 底部MC 9格物品栏与血条 -->
+        <div class="mc-hud-bottom">
+            <!-- 状态条（生命与饱食度） -->
+            <div id="mcStatusBars" class="mc-status-bars">
+                <div id="mcHearts" class="mc-hearts">❤️❤️❤️❤️❤️</div>
+                <div id="mcFood" class="mc-food">🍗🍗🍗🍗🍗</div>
+            </div>
+            <!-- 经典9格快捷栏（初始数量全为0，纯生存无新手礼包） -->
+            <div id="mcHotbar" class="mc-hotbar">
+                <div class="mc-slot active" data-idx="0"><div class="mc-slot-icon mc-b-wood"></div><span class="mc-count">0</span><span class="mc-key">1</span></div>
+                <div class="mc-slot" data-idx="1"><div class="mc-slot-icon mc-b-planks"></div><span class="mc-count">0</span><span class="mc-key">2</span></div>
+                <div class="mc-slot" data-idx="2"><div class="mc-slot-icon mc-b-stick"></div><span class="mc-count">0</span><span class="mc-key">3</span></div>
+                <div class="mc-slot" data-idx="3"><div class="mc-slot-icon mc-b-crafting"></div><span class="mc-count">0</span><span class="mc-key">4</span></div>
+                <div class="mc-slot" data-idx="4"><div class="mc-slot-icon mc-b-pickaxe"></div><span class="mc-count">0</span><span class="mc-key">5</span></div>
+                <div class="mc-slot" data-idx="5"><div class="mc-slot-icon mc-b-dirt"></div><span class="mc-count">0</span><span class="mc-key">6</span></div>
+                <div class="mc-slot" data-idx="6"><div class="mc-slot-icon mc-b-stone"></div><span class="mc-count">0</span><span class="mc-key">7</span></div>
+                <div class="mc-slot" data-idx="7"><div class="mc-slot-icon mc-b-apple"></div><span class="mc-count">0</span><span class="mc-key">8</span></div>
+                <div class="mc-slot" data-idx="8"><div class="mc-slot-icon mc-b-tnt"></div><span class="mc-count">0</span><span class="mc-key">9</span></div>
+            </div>
+        </div>
+
+        <!-- 移动端触屏按键 -->
+        <div class="mc-touch-controls">
+            <div id="lcJoy" class="lc-joy"><div class="lc-joy-knob"></div></div>
+            <div class="mc-touch-actions">
+                <button id="btnMcInvTouch" class="mc-act-btn mc-act-inv">🎒 背包</button>
+                <button id="btnMcDig" class="mc-act-btn mc-act-dig">⛏️ 挖掘</button>
+                <button id="btnMcBuild" class="mc-act-btn mc-act-place">📦 放置</button>
+                <button id="btnMcJump" class="mc-act-btn mc-act-jump">⬆️ 跳跃</button>
+            </div>
+        </div>
+
+        <!-- 在线网页MC模态框 -->
+        <div id="mcOnlineModal" class="mc-modal" style="display:none">
+            <div class="mc-modal-box">
+                <div class="mc-modal-header">
+                    <span>🌐 经典网页版我的世界 (Minecraft Web)</span>
+                    <button id="btnMcCloseOnline" class="mc-x">✕</button>
+                </div>
+                <div class="mc-modal-body">
+                    <iframe id="mcIframe" src="" frameborder="0" allow="fullscreen; pointer-lock; autoplay"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsScreen" style="display:none">
+        <div class="settings-content">
+            <h1>⚙️ 设置</h1>
+            <div class="settings-options">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">渲染优化</span>
+                        <span class="setting-desc">开启视锥体剔除，不渲染看不见的物体以提升性能</span>
+                    </div>
+                    <label class="setting-switch">
+                        <input type="checkbox" id="settingRenderOpt" checked>
+                        <span class="setting-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-label">怀旧材质</span>
+                        <span class="setting-desc">使用低多边形平面着色，关闭阴影和高级光照，回到旧版画质</span>
+                    </div>
+                    <label class="setting-switch">
+                        <input type="checkbox" id="settingRetroMaterial">
+                        <span class="setting-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <button id="btnBackFromSettings" class="btn-back">← 返回主菜单</button>
+        </div>
     </div>
 
     <!-- 私人存档选择 -->
@@ -85,6 +696,21 @@
         </div>
     </div>
 
+    <!-- 角色选择/创建界面 -->
+    <div id="characterScreen" style="display:none">
+        <div class="room-list-content">
+            <h1>👤 选择角色</h1>
+            <p class="subtitle">选择已有角色或创建新角色进入联机</p>
+            <div id="characterList" class="room-list"></div>
+            <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
+                <input type="text" id="newCharName" placeholder="输入新角色名" maxlength="12" style="flex:1;padding:10px;border-radius:8px;border:2px solid #555;background:#222;color:#fff;font-size:16px;">
+                <button id="btnCreateChar" class="btn-start" style="padding:10px 20px;font-size:16px;">创建角色</button>
+            </div>
+            <p id="charError" style="color:#ff6666;font-size:14px;margin-top:8px;display:none;"></p>
+            <button id="btnBackToRoomList" class="btn-back" style="margin-top:16px;">← 返回房间列表</button>
+        </div>
+    </div>
+
     <!-- 开始界面 -->
     <div id="startScreen" style="display:none">
         <div class="start-content">
@@ -99,12 +725,11 @@
                     <div><kbd>Shift</kbd> 冲刺</div>
                     <div><kbd>左键</kbd> 攻击/采集</div>
                     <div><kbd>右键</kbd> 使用物品</div>
-                    <div><kbd>E</kbd> 交互/拾取</div>
-                    <div><kbd>I</kbd> 背包</div>
+                    <div><kbd>E</kbd> 背包</div><div><kbd>F</kbd> 交互/拾取</div>
                     <div><kbd>C</kbd> 合成</div>
                     <div><kbd>B</kbd> 建造模式</div>
                     <div><kbd>1</kbd>-<kbd>5</kbd> 快捷栏</div>
-                    <div><kbd>ESC</kbd> 释放鼠标</div>
+                    <div><kbd>ESC</kbd> 成就</div>
                 </div>
             </div>
             <button id="startBtn" class="btn-start">开始游戏</button>
@@ -122,6 +747,10 @@
             <div id="chatMessages"></div>
             <input type="text" id="chatInput" placeholder="按T说话..." maxlength="100" autocomplete="off">
         </div>
+        <!-- 成就通知（右上角） -->
+        <div id="achievementNotify" style="display:none;position:fixed;top:15px;right:15px;z-index:1000;pointer-events:none;"></div>
+        <!-- 钓鱼提示 -->
+        <div id="fishingHint" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:#66ccff;padding:10px 20px;border-radius:8px;font-size:16px;z-index:999;pointer-events:none;"></div>
         <!-- 准星 -->
         <div id="crosshair">+</div>
 
@@ -170,7 +799,7 @@
         </div>
 
         <!-- 交互提示 -->
-        <div id="interactHint" style="display:none">按 <kbd>E</kbd> 交互</div>
+        <div id="interactHint" style="display:none">按 <kbd>F</kbd> 交互</div>
 
         <!-- 死亡界面 -->
         <div id="deathScreen" style="display:none">
@@ -229,8 +858,10 @@
             </div>
             <div id="inventoryGrid"></div>
         </div>
+        <div class="inv-hotbar-label">物品栏</div>
+        <div id="inventoryHotbar"></div>
         <div class="panel-footer">
-            <p>点击物品分配到快捷栏 | 右键装备盔甲 | 点击装备槽卸下</p>
+            <p>点选物品再点目标格交换位置，或直接拖拽 | 右键装备盔甲 | 点击装备槽卸下 | Q丢弃选中</p>
         </div>
     </div>
 
@@ -382,31 +1013,78 @@
         </div>
     </div>
 
+    <!-- 锻造台界面 -->
+    <div id="forgeUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2>⚒️ 锻造台</h2>
+            <button class="btn-close" id="btnForgeClose">✕</button>
+        </div>
+        <p class="miner-help">放入木质装备和元素石，点击开始锻造。每1个元素石=锻造1次</p>
+        <div style="display:flex;gap:16px;padding:10px 5px;align-items:center;justify-content:center;">
+            <div style="text-align:center;">
+                <div style="color:#8b5a2b;font-size:14px;margin-bottom:5px;">木质装备</div>
+                <div id="forgeEquipSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+            <div style="font-size:20px;color:#66aaff;">+</div>
+            <div style="text-align:center;">
+                <div style="color:#66aaff;font-size:14px;margin-bottom:5px;">元素石</div>
+                <div id="forgeStoneSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+            <div style="font-size:20px;color:#ffaa44;">➜</div>
+            <div style="text-align:center;">
+                <div style="color:#ffaa44;font-size:14px;margin-bottom:5px;">锻造产物</div>
+                <div id="forgeResultSlot" class="inv-slot empty" style="width:50px;height:50px;"></div>
+            </div>
+        </div>
+        <div style="text-align:center;margin:10px 0;">
+            <button id="btnForgeStart" style="padding:8px 24px;font-size:16px;border:none;border-radius:6px;background:#66aaff;color:#222;cursor:pointer;" disabled>开始锻造</button>
+        </div>
+        <div style="border-top:1px solid #444;margin-top:8px;padding-top:8px;">
+            <div style="color:#aaa;font-size:13px;margin-bottom:5px;">背包中的木质装备和元素石：</div>
+            <div id="forgeInventoryGrid" style="display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow-y:auto;"></div>
+        </div>
+    </div>
+
     <!-- 黄金祭坛界面 -->
     <div id="goldAltarUI" class="game-panel" style="display:none">
         <div class="panel-header">
             <h2>🌟 黄金祭坛</h2>
             <button class="btn-close" data-close="goldAltarUI">✕</button>
         </div>
-        <p class="miner-help">放入1个穿越器和5个石头，献祭后传送到金维度！</p>
-        <div class="miner-layout">
-            <div>
-                <h3>背包</h3>
-                <div id="goldAltarInventoryGrid" class="miner-inventory-grid"></div>
+        <div class="gold-altar-sections">
+            <div class="gold-altar-section">
+                <h3>🌀 传送至金维度</h3>
+                <p class="gold-altar-hint">放入3个黄金 + 1个金矿</p>
+                <div id="goldAltarTeleportGrid" class="gold-altar-grid"></div>
             </div>
-            <div>
-                <h3>祭坛 (2格)</h3>
-                <div id="goldAltarStorageGrid" class="miner-grid"></div>
+            <div class="gold-altar-divider"></div>
+            <div class="gold-altar-section">
+                <h3>👑 召唤元素王</h3>
+                <p class="gold-altar-hint">放入1个高级木材 + 1个石之心 + 1个神木</p>
+                <div id="goldAltarBossGrid" class="gold-altar-grid"></div>
             </div>
         </div>
+        <div class="gold-altar-inv-section">
+            <h3>背包</h3>
+            <div id="goldAltarInventoryGrid" class="miner-inventory-grid"></div>
+        </div>
+    </div>
+
+    <!-- 成就界面 -->
+    <div id="achievementUI" class="game-panel" style="display:none;max-width:520px;">
+        <div class="panel-header">
+            <h2>🏆 成就</h2>
+            <button class="btn-close" data-close="achievementUI">✕</button>
+        </div>
+        <div id="achievementList" style="max-height:400px;overflow-y:auto;padding:8px;"></div>
     </div>
 
     <!-- 建造提示 -->
     <div id="buildHint" style="display:none">
         <p>建造模式 | <kbd>左键</kbd>放置 <kbd>B</kbd>退出</p>
         <div id="buildSelector">
-            <button class="build-option active" data-item="wall_wood">木墙</button>
-            <button class="build-option" data-item="wall_stone">石墙</button>
+            <button class="build-option active" data-item="wall_wood">木砖块</button>
+            <button class="build-option" data-item="wall_stone">石砖块</button>
             <button class="build-option" data-item="campfire">篝火</button>
             <button class="build-option" data-item="torch">火把</button>
             <button class="build-option" data-item="knowledge_bookshelf">知识书架</button>
@@ -422,40 +1100,57 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.5/dist/mqtt.min.js"></script>
-    <script src="js/data.js"></script>
-    <script src="js/item-icons.js"></script>
-    <script src="js/inventory.js"></script>
-    <script src="js/survival.js"></script>
-    <script src="js/world.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/enemies.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/mobile.js"></script>
-    <script src="js/save.js"></script>
-    <script src="js/multiplayer.js"></script>
-    <script src="js/main.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.update();
-                reg.addEventListener('updatefound', () => {
-                    const nw = reg.installing;
-                    if (nw) {
-                        nw.addEventListener('statechange', () => {
-                            if (nw.state === 'activated' && navigator.serviceWorker.controller) {
-                                window.location.reload();
-                            }
-                        });
-                    }
-                });
-            }).catch(() => {});
+    <script src="js/vendor/three.min.js?v=20261114c"></script>
+    <script src="js/vendor/mqtt.min.js?v=20261114c"></script>
+    <script src="js/data.js?v=20261114c"></script>
+    <script src="js/item-icons.js?v=20261114c"></script>
+    <script src="js/inventory.js?v=20261114c"></script>
+    <script src="js/survival.js?v=20261114c"></script>
+    <script src="js/world.js?v=20261114c"></script>
+    <script src="js/player.js?v=20261114c"></script>
+    <script src="js/enemies.js?v=20261114c"></script>
+    <script src="js/ui.js?v=20261115a"></script>
+    <script src="js/remake.js?v=20261114c"></script>
+    <script src="js/rmk_net.js?v=20261114c"></script>
+    <script src="js/farm.js?v=20261114c"></script>
+    <script src="js/mobile.js?v=20261114c"></script>
+    <!-- 浆果小游戏兑换界面 -->
+    <div id="berryShopUI" class="game-panel" style="display:none">
+        <div class="panel-header">
+            <h2><svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><circle cx="9" cy="14" r="5" fill="#8e5cc5"/><circle cx="15" cy="12" r="4" fill="#a86bd4"/><circle cx="13" cy="17" r="3" fill="#8e5cc5"/><path d="M12 8 Q14 2 19 2" stroke="#6a9c5a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>浆果兑换</h2>
+            <button class="btn-close" data-close="berryShopUI">✕</button>
+        </div>
+        <div id="berryShopContent" style="padding:16px;">
+            <div id="berryShopCount" style="margin-bottom:12px;color:#ffd700;"></div>
+            <button id="btnBerryBuy" class="menu-btn" style="width:100%;margin-bottom:8px;"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="17" text-anchor="middle" font-size="13" fill="currentColor" font-family="Arial, sans-serif">1</text></svg>购买道具</button>
+            <button id="btnBerryRefine" class="menu-btn" style="width:100%;margin-bottom:8px;"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="17" text-anchor="middle" font-size="13" fill="currentColor" font-family="Arial, sans-serif">2</text></svg>精修</button>
+            <button id="btnBerryEff" class="menu-btn" style="width:100%;margin-bottom:8px;"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="17" text-anchor="middle" font-size="13" fill="currentColor" font-family="Arial, sans-serif">3</text></svg>效率</button>
+            <button id="btnBerryAch" class="menu-btn" style="width:100%;margin-bottom:8px;"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="17" text-anchor="middle" font-size="13" fill="currentColor" font-family="Arial, sans-serif">4</text></svg>成就</button>
+            <div id="berryShopBuy" style="display:none;margin-top:12px;">
+                <p style="color:#aaa;margin-bottom:8px;">可用浆果购买工具</p>
+                <button id="btnBuyWoodSword" class="menu-btn" style="width:100%;margin-bottom:6px;"><svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="4" x2="12" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="14" x2="17" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="20" r="2" fill="currentColor"/></svg>木剑（10 浆果）</button>
+                <button id="btnBuyWoodPick" class="menu-btn" style="width:100%;margin-bottom:6px;"><svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="8" x2="19" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="8" x2="3" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="19" y1="8" x2="21" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>木镐（20 浆果）</button>
+                <button id="btnBuyBerryRandomizer" class="menu-btn" style="width:100%;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.5" cy="16.5" r="1.5" fill="currentColor" stroke="none"/></svg>事件随机器（100 浆果）</button>
+            </div>
+            <p id="berryShopMsg" style="margin-top:12px;color:#ff6666;"></p>
+        </div>
+    </div>
 
-            // 监听控制器变更（新SW接管时自动刷新）
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                window.location.reload();
-            });
+    <script src="js/save.js?v=20261114c"></script>
+    <script src="js/multiplayer.js?v=20261114c"></script>
+    <script src="js/stickpvz.js?v=20261116a"></script>
+    <script src="js/pvz_art.js?v=20261116a"></script>
+    <script src="js/pvz.js?v=20261117a"></script>
+    <script src="js/ballbattle.js?v=20261115d"></script>
+    <script src="js/minecraft.js?v=20261114c"></script>
+    <script src="js/linjing.js?v=20261114c"></script>
+    <script src="js/main.js?v=20261114c"></script>
+    <script>
+        // ServiceWorker 已禁用，使用 no-cache 服务器实时更新
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                for (const reg of regs) reg.unregister();
+            }).catch(() => {});
         }
     </script>
 </body>

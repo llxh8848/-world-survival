@@ -1,8 +1,10 @@
 {
   "name": "world-survival",
-  "version": "1.0.0",
+  "version": "1.9.4",
   "description": "世界生存 - 3D Survival Game",
   "scripts": {
+    "start": "node server.js",
+    "server": "node server.js",
     "build": "node copy-to-www.js",
     "sync": "npx cap sync android",
     "android": "npx cap open android"
@@ -17,7 +19,10 @@
   "dependencies": {
     "@capacitor/android": "^5.7.8",
     "@capacitor/cli": "^5.7.8",
-    "@capacitor/core": "^5.7.8"
+    "@capacitor/core": "^5.7.8",
+    "aedes": "^0.46.3",
+    "websocket-stream": "^5.5.2",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "netlify-cli": "^27.0.1",

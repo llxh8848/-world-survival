@@ -1,5 +1,5 @@
 @echo off
-cd /d d:\xyxnyz
+cd /d F:\xy\xyxnyz
 "C:\Program Files\Git\bin\git.exe" add -A
 "C:\Program Files\Git\bin\git.exe" commit -m "auto backup %date% %time%"
 "C:\Program Files\Git\bin\git.exe" push origin master
